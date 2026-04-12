@@ -14,66 +14,16 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const MOCK_JOBS = [
-  {
-    id: 1,
-    title: 'Senior React Developer',
-    department: 'Engineering',
-    location: 'Remote',
-    type: 'Full-Time',
-    salary: '$120k - $160k',
-    posted: '2 days ago',
-    applicants: 48,
-    status: 'Active',
-    description: 'We are looking for an experienced React developer to lead our frontend architecture. You will work closely with the design and backend teams to deliver scalable, high-performance web applications.',
-    skills: ['React', 'TypeScript', 'Node.js', 'GraphQL']
-  },
-  {
-    id: 2,
-    title: 'Backend Engineer',
-    department: 'Engineering',
-    location: 'Bangalore, IN',
-    type: 'Full-Time',
-    salary: '₹18L - ₹28L',
-    posted: '5 days ago',
-    applicants: 112,
-    status: 'Active',
-    description: 'Join our backend team to design and build robust APIs and microservices. Experience with distributed systems and cloud infrastructure is a strong plus.',
-    skills: ['Python', 'PostgreSQL', 'Docker', 'AWS']
-  },
-  {
-    id: 3,
-    title: 'Product Manager',
-    department: 'Product',
-    location: 'Hybrid - Mumbai',
-    type: 'Full-Time',
-    salary: '₹22L - ₹35L',
-    posted: '1 week ago',
-    applicants: 67,
-    status: 'Active',
-    description: 'Drive product strategy and roadmap for our AI-powered recruitment platform. Collaborate with engineering, design, and business teams to deliver impactful features.',
-    skills: ['Product Strategy', 'Agile', 'Data Analysis', 'Stakeholder Management']
-  },
-  {
-    id: 4,
-    title: 'UI/UX Designer',
-    department: 'Design',
-    location: 'Remote',
-    type: 'Contract',
-    salary: '$80k - $110k',
-    posted: '3 days ago',
-    applicants: 29,
-    status: 'Draft',
-    description: 'Create stunning, user-centered designs for our platform. You will own the end-to-end design process from research and wireframing to high-fidelity prototypes.',
-    skills: ['Figma', 'User Research', 'Design Systems', 'Prototyping']
-  }
-];
-
-const AdminJobDescriptions = () => {
-  const [jobs, setJobs] = useState(MOCK_JOBS);
+const AdminJobDescriptions = ({ jobs: initialJobs = [] }) => {
+  const [jobs, setJobs] = useState(initialJobs);
   const [expandedId, setExpandedId] = useState(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newJob, setNewJob] = useState({ title: '', department: '', location: '', type: 'Full-Time', description: '', skills: '' });
+
+  // Update local state if props change (simple sync)
+  React.useEffect(() => {
+    setJobs(initialJobs);
+  }, [initialJobs]);
 
   const handleDelete = (id) => {
     setJobs(prev => prev.filter(j => j.id !== id));

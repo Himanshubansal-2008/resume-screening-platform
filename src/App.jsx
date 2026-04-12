@@ -38,14 +38,11 @@ import CandidateSubmit from './components/candidate/CandidateSubmit';
 import CandidatePrepHub from './components/candidate/CandidatePrepHub';
 import CandidateSimulation from './components/candidate/CandidateSimulation';
 
-const MOCK_CANDIDATES = [
-  { id: 1, name: 'Alex Rivera', role: 'Senior React Developer', match: 92, status: 'Top Pick', skills: ['React', 'TypeScript', 'Node.js'], applied: '2 days ago' },
-  { id: 2, name: 'Sarah Chen', role: 'Backend Engineer', match: 86, status: 'Strong Match', skills: ['Python', 'PostgreSQL', 'Docker'], applied: '1 week ago' },
-];
+const ADMIN_EMAILS = ["himanshubansal1803@gmail.com", "nikhiltelkar19@gmail.com", "hartejsinghsandhu2806@gmail.com"];
 
-const ADMIN_EMAILS = ["himanshubansal1803@gmail.com", "nikhiltelkar19@gmail.com"];
+const API_BASE_URL = "http://localhost:5001/api";
 
-const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat }) => {
+const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candidates, jobs, onRefresh }) => {
   const isAdmin = role === 'admin';
 
   return (
@@ -143,11 +140,11 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat }) => 
         <AnimatePresence mode="wait">
           <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
             {isAdmin ? (
-               activeTab === 'dashboard' ? <AdminDashboard /> : 
-               activeTab === 'database' ? <AdminResumeDatabase onOpenChat={onOpenChat} /> :
-               activeTab === 'jobs' ? <AdminJobDescriptions /> : <AdminIngestionView />
+               activeTab === 'dashboard' ? <AdminDashboard candidates={candidates} /> : 
+               activeTab === 'database' ? <AdminResumeDatabase candidates={candidates} onOpenChat={onOpenChat} /> :
+               activeTab === 'jobs' ? <AdminJobDescriptions jobs={jobs} /> : <AdminIngestionView onRefresh={onRefresh} />
             ) : (
-               activeTab === 'dashboard' ? <CandidateHome user={user} /> : 
+               activeTab === 'dashboard' ? <CandidateHome user={user} candidates={candidates} /> : 
                activeTab === 'submit' ? <CandidateSubmit setActiveTab={setActiveTab} /> :
                activeTab === 'prephub' ? <CandidatePrepHub setActiveTab={setActiveTab} /> :
                activeTab === 'mockbot' ? <CandidateSimulation setActiveTab={setActiveTab} /> : <Placeholder />
@@ -159,54 +156,151 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat }) => 
   );
 };
 
-const AdminIngestionView = () => {
-    const [fileStatus, setFileStatus] = useState(null);
-    const [extractedName, setExtractedName] = useState("");
+const AdminIngestionView = ({ onRefresh }) => {
+    const [candidateName, setCandidateName] = useState("");
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [isIngesting, setIsIngesting] = useState(false);
+    const [success, setSuccess] = useState(false);
 
-    const handleUploadSim = () => {
-        setFileStatus('uploading');
-        setTimeout(() => {
-            setFileStatus('extracted');
-            setExtractedName('Nikhil Telkar'); // Mock auto-fetch
-        }, 1500);
+    const handleIngest = async (e) => {
+        e.preventDefault();
+        if (!candidateName || !selectedFile) return;
+
+        setIsIngesting(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/candidates/ingest`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    name: candidateName, 
+                    fileName: selectedFile.name 
+                })
+            });
+
+            if (response.ok) {
+                setSuccess(true);
+                setCandidateName("");
+                setSelectedFile(null);
+                if (onRefresh) onRefresh();
+                setTimeout(() => setSuccess(false), 3000);
+            }
+        } catch (error) {
+            console.error("Ingestion failed:", error);
+        } finally {
+            setIsIngesting(false);
+        }
     };
 
     return (
-        <div className="fadeIn glass-card" style={{ padding: '3rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h3 style={{ color: 'white', fontSize: '1.5rem', fontWeight: '800' }}>AI Data Ingestion</h3>
-                <div style={{ padding: '6px 16px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '800' }}>AUTO-FETCH ENABLED</div>
+        <div className="fadeIn glass-card" style={{ padding: '3rem', borderRadius: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
+                <div>
+                    <h3 style={{ color: 'white', fontSize: '1.75rem', fontWeight: '800', letterSpacing: '-0.02em' }}>AI Data Ingestion</h3>
+                    <p style={{ color: '#94a3b8', marginTop: '0.5rem' }}>Upload resumes to extract insights and calculate match scores</p>
+                </div>
+                <div style={{ padding: '8px 20px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '12px', fontSize: '0.75rem', fontWeight: '800', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                    RAG-READY PIPELINE
+                </div>
             </div>
             
-            <div onClick={handleUploadSim} style={{ cursor: 'pointer', width: '100%', height: '240px', background: 'rgba(255,255,255,0.01)', border: '2px dashed rgba(255,255,255,0.1)', borderRadius: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
-                <FileText size={48} color={fileStatus === 'extracted' ? '#10b981' : '#3b82f6'} />
-                <span style={{ color: '#94a3b8' }}>
-                    {fileStatus === 'uploading' ? 'Analyzing Resume Content...' : 
-                     fileStatus === 'extracted' ? 'Resume Processed Successfully!' : 'Click or Drag Resume to Ingest'}
-                </span>
-            </div>
+            <form onSubmit={handleIngest} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <label style={{ color: 'white', fontWeight: '700', fontSize: '0.9rem' }}>Candidate Full Name</label>
+                    <input 
+                        type="text" 
+                        placeholder="e.g. John Doe"
+                        value={candidateName}
+                        onChange={(e) => setCandidateName(e.target.value)}
+                        required
+                        style={{ 
+                            width: '100%', 
+                            background: 'rgba(255,255,255,0.03)', 
+                            border: '1px solid rgba(255,255,255,0.1)', 
+                            padding: '1.25rem', 
+                            borderRadius: '16px', 
+                            color: 'white',
+                            fontSize: '1rem',
+                            outline: 'none'
+                        }}
+                    />
+                </div>
 
-            {fileStatus === 'extracted' && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: '2rem', padding: '1.5rem', background: 'rgba(16, 185, 129, 0.05)', borderRadius: '16px', border: '1px solid rgba(16, 185, 129, 0.1)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                            <span style={{ color: '#10b981', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>Extracted Identity</span>
-                            <div style={{ color: 'white', fontSize: '1.25rem', fontWeight: '800', marginTop: '4px' }}>{extractedName}</div>
-                        </div>
-                        <button className="btn-action-pro" style={{ background: '#10b981', color: 'white' }}>Confirm & Save</button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <label style={{ color: 'white', fontWeight: '700', fontSize: '0.9rem' }}>Resume Document</label>
+                    <div 
+                        style={{ 
+                            position: 'relative',
+                            width: '100%', 
+                            height: '180px', 
+                            background: selectedFile ? 'rgba(59, 130, 246, 0.05)' : 'rgba(255,255,255,0.01)', 
+                            border: selectedFile ? '2px solid #3b82f6' : '2px dashed rgba(255,255,255,0.1)', 
+                            borderRadius: '24px', 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            gap: '1rem',
+                            transition: 'all 0.3s'
+                        }}
+                    >
+                        <input 
+                            type="file" 
+                            onChange={(e) => setSelectedFile(e.target.files[0])}
+                            style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                        />
+                        <FileText size={48} color={selectedFile ? '#3b82f6' : '#94a3b8'} />
+                        <span style={{ color: selectedFile ? 'white' : '#94a3b8', fontWeight: '600' }}>
+                            {selectedFile ? selectedFile.name : 'Click to select or drag resume file'}
+                        </span>
+                        {selectedFile && <span style={{ fontSize: '0.75rem', color: '#3b82f6' }}>File ready for AI extraction</span>}
                     </div>
-                </motion.div>
-            )}
+                </div>
 
-            <div style={{ marginTop: '2rem' }}>
-                <h4 style={{ color: 'white', marginBottom: '1rem' }}>Batch Processing Input</h4>
-                <textarea style={{ width: '100%', height: '150px', background: 'rgba(255,255,255,0.02)', color: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }} placeholder="Paste batch resume text for deep analysis..."></textarea>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                    <button 
+                        type="submit"
+                        disabled={isIngesting || !candidateName || !selectedFile}
+                        className="btn-action-pro" 
+                        style={{ 
+                            padding: '1.25rem 3rem', 
+                            background: success ? '#10b981' : '#3b82f6', 
+                            color: 'white', 
+                            borderRadius: '16px', 
+                            fontSize: '1rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            opacity: (isIngesting || !candidateName || !selectedFile) ? 0.5 : 1
+                        }}
+                    >
+                        {isIngesting ? <><motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}><Cpu size={20} /></motion.div> Analyzing...</> : 
+                         success ? <><CheckCircle size={20} /> Success!</> : 
+                         <><Plus size={20} /> Start AI Ingestion</>}
+                    </button>
+                </div>
+            </form>
+
+            <div style={{ marginTop: '4rem', paddingTop: '2rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                <h4 style={{ color: 'white', fontSize: '1.2rem', fontWeight: '800', marginBottom: '1.5rem' }}>Batch Processing</h4>
+                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '2rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <textarea 
+                        style={{ width: '100%', height: '120px', background: 'transparent', border: 'none', color: '#cbd5e1', fontSize: '1rem', outline: 'none', resize: 'none' }} 
+                        placeholder="Paste bulk text or multiple LinkedIn profiles for deep background analysis..."
+                    ></textarea>
+                </div>
             </div>
         </div>
     );
 };
 
-const CandidateHome = ({ user }) => (
+const CandidateHome = ({ user, candidates }) => {
+  // Simulate finding the current candidate's data
+  // In a real app, this would be a filtered match or another API call
+  const candidate = candidates.find(c => c.name.includes(user?.firstName || "Alex")) || candidates[0];
+  
+  const matchScore = candidate?.match || 0;
+  
+  return (
   <div className="fadeIn" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.8fr', gap: '2rem' }}>
     <div className="glass-card" style={{ textAlign: 'center', position: 'relative', overflow: 'hidden', background: 'linear-gradient(145deg, rgba(59, 130, 246, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%)', border: '1px solid rgba(59, 130, 246, 0.15)' }}>
        <div style={{ position: 'absolute', top: '-20%', right: '-20%', width: '200px', height: '200px', background: 'radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%)', filter: 'blur(40px)', zIndex: 0 }}></div>
@@ -217,12 +311,12 @@ const CandidateHome = ({ user }) => (
            </h3>
            
            <div style={{ fontSize: '6.5rem', fontWeight: '900', letterSpacing: '-4px', color: 'white', marginBottom: '0.2rem', textShadow: '0 0 40px rgba(59, 130, 246, 0.3)' }}>
-              88<span style={{ color: '#3b82f6', fontSize: '4rem' }}>%</span>
+              {matchScore}<span style={{ color: '#3b82f6', fontSize: '4rem' }}>%</span>
            </div>
            <p style={{ color: '#94a3b8', fontWeight: '600', fontSize: '1rem', marginBottom: '3rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Global Match Score</p>
            
            <div className="pro-progress-bg" style={{ height: '8px', marginBottom: '3.5rem', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', overflow: 'hidden' }}>
-              <motion.div initial={{ width: 0 }} animate={{ width: '88%' }} transition={{ duration: 1.5, ease: 'easeOut' }} style={{ height: '100%', background: 'linear-gradient(90deg, #3b82f6, #06b6d4)', borderRadius: '4px', boxShadow: '0 0 10px rgba(59,130,246,0.5)' }}></motion.div>
+              <motion.div initial={{ width: 0 }} animate={{ width: `${matchScore}%` }} transition={{ duration: 1.5, ease: 'easeOut' }} style={{ height: '100%', background: 'linear-gradient(90deg, #3b82f6, #06b6d4)', borderRadius: '4px', boxShadow: '0 0 10px rgba(59,130,246,0.5)' }}></motion.div>
            </div>
            
            <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'rgba(0,0,0,0.2)', padding: '1.5rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
@@ -250,21 +344,22 @@ const CandidateHome = ({ user }) => (
       <div className="glass-card" style={{ borderLeft: '4px solid #10b981', background: 'linear-gradient(90deg, rgba(16,185,129,0.05) 0%, transparent 100%)' }}>
         <h4 style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem', fontSize: '1.1rem', fontWeight: '800' }}><TrendingUp size={22} /> Core Strengths Detected</h4>
         <p style={{ color: '#94a3b8', lineHeight: '1.7', fontSize: '0.95rem' }}>
-            Your expertise in <strong>React & Scalable Systems</strong> matches 95% of our high-priority requirements. AI detected strong architectural reasoning in your "Project Alpha" summary, establishing you as a top-tier candidate in UI frameworks.
+            {candidate?.summary || "Your expertise matches our high-priority requirements. Establishing you as a top-tier candidate."}
         </p>
       </div>
       <div className="glass-card" style={{ borderLeft: '4px solid #f59e0b', background: 'linear-gradient(90deg, rgba(245,158,11,0.05) 0%, transparent 100%)' }}>
         <h4 style={{ color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem', fontSize: '1.1rem', fontWeight: '800' }}><AlertCircle size={22} /> AI Skill Gaps Flagged</h4>
         <p style={{ color: '#94a3b8', lineHeight: '1.7', fontSize: '0.95rem', marginBottom: '1rem' }}>
-            Limited exposure to Cloud Infrastructure (Terraform/AWS) detected compared to the role baseline requirements.
+            AI detected some gaps in specific cloud infrastructure requirements compared to the role baseline.
         </p>
         <div style={{ background: 'rgba(245,158,11,0.1)', padding: '12px', borderRadius: '12px', color: '#fcd34d', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Cpu size={16} /> Our AI has curated 5 specific prep modules to address this before your interview.
+            <Cpu size={16} /> Our AI has curated specific prep modules to address this before your interview.
         </div>
       </div>
     </div>
   </div>
-);
+  );
+};
 
 const Placeholder = () => (
     <div className="user-card fadeIn" style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed var(--pro-border)' }}>
@@ -275,8 +370,30 @@ const Placeholder = () => (
 const App = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [activeChatCandidate, setActiveChatCandidate] = useState(null);
+  const [candidates, setCandidates] = useState([]);
+  const [jobs, setJobs] = useState([]);
   const { user } = useUser();
   const isAdmin = ADMIN_EMAILS.includes(user?.primaryEmailAddress?.emailAddress);
+
+  const fetchData = React.useCallback(async () => {
+    try {
+      const [candRes, jobsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/candidates`),
+        fetch(`${API_BASE_URL}/jobs`)
+      ]);
+      const candData = await candRes.json();
+      const jobsData = await jobsRes.json();
+      setCandidates(candData);
+      setJobs(jobsData);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   return (
     <>
@@ -322,8 +439,28 @@ const App = () => {
       </SignedOut>
 
       <SignedIn>
-        <DashboardShell role={isAdmin ? 'admin' : 'candidate'} activeTab={activeTab} setActiveTab={setActiveTab} user={user} onOpenChat={() => setIsChatOpen(true)} />
-        <AIChatbotSidebar isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} candidates={MOCK_CANDIDATES} />
+        <DashboardShell 
+          role={isAdmin ? 'admin' : 'candidate'} 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab} 
+          user={user} 
+          candidates={candidates}
+          jobs={jobs}
+          onRefresh={fetchData}
+          onOpenChat={(candidate) => {
+            setActiveChatCandidate(candidate || null);
+            setIsChatOpen(true);
+          }} 
+        />
+        <AIChatbotSidebar 
+          isOpen={isChatOpen} 
+          onClose={() => {
+            setIsChatOpen(false);
+            setActiveChatCandidate(null);
+          }} 
+          candidates={candidates} 
+          activeCandidate={activeChatCandidate}
+        />
       </SignedIn>
     </>
   );
