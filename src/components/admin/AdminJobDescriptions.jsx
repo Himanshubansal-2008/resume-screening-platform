@@ -25,30 +25,50 @@ const inputStyle = {
   outline: 'none'
 };
 
-const AdminJobDescriptions = ({ jobs: initialJobs = [] }) => {
+const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
   const [jobs, setJobs] = useState(initialJobs);
   const [expandedId, setExpandedId] = useState(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [newJob, setNewJob] = useState({ title: '', department: '', location: '', type: 'Full-Time', description: '', skills: '' });
+
+  const API_BASE_URL = "http://localhost:5001/api";
 
   React.useEffect(() => { setJobs(initialJobs); }, [initialJobs]);
 
-  const handleDelete = (id) => setJobs(prev => prev.filter(j => j.id !== id));
+  const handleDelete = async (id) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/jobs/${id}`, { method: 'DELETE' });
+        if (response.ok && onRefresh) onRefresh();
+    } catch (error) {
+        console.error("Failed to delete job:", error);
+    }
+  };
 
-  const handleCreate = (e) => {
+  const handleCreate = async (e) => {
     e.preventDefault();
-    const created = {
-      id: Date.now(),
-      ...newJob,
-      skills: newJob.skills.split(',').map(s => s.trim()),
-      salary: 'TBD',
-      posted: 'Just now',
-      applicants: 0,
-      status: 'Draft'
-    };
-    setJobs(prev => [created, ...prev]);
-    setNewJob({ title: '', department: '', location: '', type: 'Full-Time', description: '', skills: '' });
-    setShowCreateForm(false);
+    setIsSubmitting(true);
+    try {
+        const response = await fetch(`${API_BASE_URL}/jobs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ...newJob,
+                skills: newJob.skills.split(',').map(s => s.trim()),
+                status: 'Active'
+            })
+        });
+
+        if (response.ok) {
+            setNewJob({ title: '', department: '', location: '', type: 'Full-Time', description: '', skills: '' });
+            setShowCreateForm(false);
+            if (onRefresh) onRefresh();
+        }
+    } catch (error) {
+        console.error("Failed to create job:", error);
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   return (
@@ -99,8 +119,10 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [] }) => {
                 style={{ ...inputStyle, height: '110px', resize: 'vertical', marginBottom: '1rem' }}
               />
               <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                <button type="button" onClick={() => setShowCreateForm(false)} style={{ ...inputStyle, cursor: 'pointer', width: 'auto', padding: '0.75rem 1.5rem', textAlign: 'center', color: '#6b7280' }}>Cancel</button>
-                <button type="submit" className="btn-primary" style={{ padding: '0.75rem 2rem' }}>Publish Job</button>
+                <button type="button" disabled={isSubmitting} onClick={() => setShowCreateForm(false)} style={{ ...inputStyle, cursor: isSubmitting ? 'not-allowed' : 'pointer', width: 'auto', padding: '0.75rem 1.5rem', textAlign: 'center', color: '#6b7280' }}>Cancel</button>
+                <button type="submit" disabled={isSubmitting} className="btn-primary" style={{ padding: '0.75rem 2rem', opacity: isSubmitting ? 0.7 : 1 }}>
+                    {isSubmitting ? 'Publishing...' : 'Publish Job'}
+                </button>
               </div>
             </form>
           </motion.div>
