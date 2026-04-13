@@ -35,6 +35,40 @@ app.get('/api/jobs', async (req, res) => {
     }
 });
 
+app.post('/api/jobs', async (req, res) => {
+    try {
+        const { title, department, location, type, salary, status, description, skills } = req.body;
+        const newJob = await prisma.job.create({
+            data: {
+                title,
+                department,
+                location,
+                type,
+                salary: salary || 'TBD',
+                status: status || 'Active',
+                description,
+                skills,
+                posted: 'Just now'
+            }
+        });
+        res.json(newJob);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/api/jobs/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.job.delete({
+            where: { id: parseInt(id) }
+        });
+        res.json({ message: "Job deleted successfully" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Retro-compatible endpoint for Google Sheets sync simulation
 app.get('/api/gsheets/candidates', async (req, res) => {
     try {

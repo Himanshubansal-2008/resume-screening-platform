@@ -37,6 +37,7 @@ import AIChatbotSidebar from './components/admin/AIChatbotSidebar';
 import CandidateSubmit from './components/candidate/CandidateSubmit';
 import CandidatePrepHub from './components/candidate/CandidatePrepHub';
 import CandidateSimulation from './components/candidate/CandidateSimulation';
+import CandidateJobs from './components/candidate/CandidateJobs';
 
 const ADMIN_EMAILS = ["himanshubansal1803@gmail.com", "nikhiltelkar19@gmail.com", "hartejsinghsandhu2806@gmail.com"];
 
@@ -88,6 +89,9 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
               </button>
               <button className={`nav-item-pro ${activeTab === 'mockbot' ? 'active' : ''}`} onClick={() => setActiveTab('mockbot')}>
                 <MessageSquare size={20} /> <span>Simulation Arena</span>
+              </button>
+              <button className={`nav-item-pro ${activeTab === 'jobs' ? 'active' : ''}`} onClick={() => setActiveTab('jobs')}>
+                <ClipboardList size={20} /> <span>Available Jobs</span>
               </button>
               <button className={`nav-item-pro ${activeTab === 'submit' ? 'active' : ''}`} onClick={() => setActiveTab('submit')}>
                 <FileText size={20} /> <span>Submission Portal</span>
@@ -144,10 +148,11 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
             {isAdmin ? (
                activeTab === 'dashboard' ? <AdminDashboard candidates={candidates} /> :
                activeTab === 'database' ? <AdminResumeDatabase candidates={candidates} onOpenChat={onOpenChat} /> :
-               activeTab === 'jobs'     ? <AdminJobDescriptions jobs={jobs} /> :
+               activeTab === 'jobs'     ? <AdminJobDescriptions jobs={jobs} onRefresh={onRefresh} /> :
                                           <AdminIngestionView onRefresh={onRefresh} />
             ) : (
                activeTab === 'dashboard' ? <CandidateHome user={user} candidates={candidates} /> :
+               activeTab === 'jobs'      ? <CandidateJobs jobs={jobs} /> :
                activeTab === 'submit'    ? <CandidateSubmit setActiveTab={setActiveTab} /> :
                activeTab === 'prephub'   ? <CandidatePrepHub setActiveTab={setActiveTab} /> :
                activeTab === 'mockbot'   ? <CandidateSimulation setActiveTab={setActiveTab} /> :
