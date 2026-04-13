@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  Plus, 
+  Plus,
   MapPin, 
   Clock, 
   Users, 
@@ -10,39 +10,93 @@ import {
   ChevronRight,
   Sparkles,
   Trash2,
-  Edit3
+  Edit3,
+  UploadCloud,
+  FileText,
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import LiveKeywordStream from '../shared/LiveKeywordStream';
 
 const AdminJobDescriptions = ({ jobs: initialJobs = [] }) => {
   const [jobs, setJobs] = useState(initialJobs);
   const [expandedId, setExpandedId] = useState(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newJob, setNewJob] = useState({ title: '', department: '', location: '', type: 'Full-Time', description: '', skills: '' });
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [keywords, setKeywords] = useState([]);
+  const fileInputRef = React.useRef(null);
 
   // Update local state if props change (simple sync)
   React.useEffect(() => {
     setJobs(initialJobs);
   }, [initialJobs]);
 
-  const handleDelete = (id) => {
-    setJobs(prev => prev.filter(j => j.id !== id));
+  const handlePdfUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsAnalyzing(true);
+    const formData = new FormData();
+    formData.append('jdPdf', file);
+
+    try {
+      const res = await fetch('http://localhost:5001/api/jobs/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      
+      if (res.ok) {
+        setKeywords(data.analysisKeywords || []);
+        // Pre-fill form
+        setNewJob({
+          title: data.title || '',
+          department: data.department || '',
+          location: data.location || '',
+          type: 'Full-Time',
+          description: data.description || '',
+          skills: Array.isArray(data.skills) ? data.skills.join('\n') : ''
+        });
+        setShowCreateForm(true);
+      }
+    } catch (err) {
+      console.error("JD Extraction failed:", err);
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
-  const handleCreate = (e) => {
+  const handleDelete = async (id) => {
+    if (!window.confirm("Permanent delete?")) return;
+    try {
+      const res = await fetch(`http://localhost:5001/api/jobs/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setJobs(prev => prev.filter(j => j.id !== id));
+        if (initialJobs.length > 0 && typeof onRefresh === 'function') onRefresh();
+      }
+    } catch (err) {
+      console.error("Delete failed:", err);
+    }
+  };
+
+  const handleCreate = async (e) => {
     e.preventDefault();
-    const created = {
-      id: Date.now(),
-      ...newJob,
-      skills: newJob.skills.split(',').map(s => s.trim()),
-      salary: 'TBD',
-      posted: 'Just now',
-      applicants: 0,
-      status: 'Draft'
-    };
-    setJobs(prev => [created, ...prev]);
-    setNewJob({ title: '', department: '', location: '', type: 'Full-Time', description: '', skills: '' });
-    setShowCreateForm(false);
+    try {
+      const res = await fetch('http://localhost:5001/api/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newJob)
+      });
+      
+      if (res.ok) {
+        setNewJob({ title: '', department: '', location: '', type: 'Full-Time', description: '', skills: '' });
+        setShowCreateForm(false);
+        if (typeof onRefresh === 'function') onRefresh();
+      }
+    } catch (err) {
+      console.error("Create failed:", err);
+    }
   };
 
   return (
@@ -57,23 +111,54 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [] }) => {
             {jobs.length} positions • {jobs.filter(j => j.status === 'Active').length} actively hiring
           </p>
         </div>
-        <button 
-          onClick={() => setShowCreateForm(!showCreateForm)}
-          className="btn-action-pro" 
-          style={{ 
-            padding: '1rem 2rem', 
-            background: '#3b82f6', 
-            color: 'white', 
-            borderRadius: '16px', 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '10px',
-            boxShadow: '0 8px 24px rgba(59, 130, 246, 0.3)',
-            fontSize: '0.9rem'
-          }}
-        >
-          <Plus size={18} /> New Job Posting
-        </button>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handlePdfUpload} 
+            style={{ display: 'none' }} 
+            accept="application/pdf"
+          />
+          <button 
+            onClick={() => fileInputRef.current.click()}
+            className="btn-action-pro" 
+            style={{ 
+              padding: '1rem 1.5rem', 
+              background: 'rgba(59, 130, 246, 0.1)', 
+              color: '#3b82f6', 
+              borderRadius: '16px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '10px',
+              border: '1px solid rgba(59, 130, 246, 0.2)',
+              fontSize: '0.9rem',
+              position: 'relative',
+              overflow: 'hidden'
+            }}
+          >
+            {isAnalyzing ? <Loader2 size={18} className="spin" /> : <UploadCloud size={18} />}
+            <span>{isAnalyzing ? 'AI Extracting...' : 'Upload JD PDF'}</span>
+            <LiveKeywordStream isAnalyzing={isAnalyzing} customKeywords={keywords} />
+          </button>
+          
+          <button 
+            onClick={() => setShowCreateForm(!showCreateForm)}
+            className="btn-action-pro" 
+            style={{ 
+              padding: '1rem 2rem', 
+              background: '#3b82f6', 
+              color: 'white', 
+              borderRadius: '16px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '10px',
+              boxShadow: '0 8px 24px rgba(59, 130, 246, 0.3)',
+              fontSize: '0.9rem'
+            }}
+          >
+            <Plus size={18} /> New Job Posting
+          </button>
+        </div>
       </div>
 
       {/* Create Form */}
@@ -92,37 +177,48 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [] }) => {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
-                <input 
-                  type="text" 
-                  placeholder="Job Title (e.g. Senior React Developer)" 
-                  value={newJob.title}
-                  onChange={(e) => setNewJob({ ...newJob, title: e.target.value })}
-                  required
-                  style={inputStyle}
-                />
-                <input 
-                  type="text" 
-                  placeholder="Department (e.g. Engineering)" 
-                  value={newJob.department}
-                  onChange={(e) => setNewJob({ ...newJob, department: e.target.value })}
-                  required
-                  style={inputStyle}
-                />
-                <input 
-                  type="text" 
-                  placeholder="Location (e.g. Remote)" 
-                  value={newJob.location}
-                  onChange={(e) => setNewJob({ ...newJob, location: e.target.value })}
-                  required
-                  style={inputStyle}
-                />
-                <input 
-                  type="text" 
-                  placeholder="Required Skills (comma separated)" 
-                  value={newJob.skills}
-                  onChange={(e) => setNewJob({ ...newJob, skills: e.target.value })}
-                  style={inputStyle}
-                />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ color: '#94a3b8', fontSize: '0.75rem', fontWeight: '700' }}>JOB TITLE</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Senior React Developer" 
+                    value={newJob.title}
+                    onChange={(e) => setNewJob({ ...newJob, title: e.target.value })}
+                    required
+                    style={inputStyle}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ color: '#94a3b8', fontSize: '0.75rem', fontWeight: '700' }}>DEPARTMENT</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Engineering" 
+                    value={newJob.department}
+                    onChange={(e) => setNewJob({ ...newJob, department: e.target.value })}
+                    required
+                    style={inputStyle}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ color: '#94a3b8', fontSize: '0.75rem', fontWeight: '700' }}>LOCATION</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Remote" 
+                    value={newJob.location}
+                    onChange={(e) => setNewJob({ ...newJob, location: e.target.value })}
+                    required
+                    style={inputStyle}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ color: '#94a3b8', fontSize: '0.75rem', fontWeight: '700' }}>MATCHING KEYWORDS (ONE PER LINE)</label>
+                  <textarea 
+                    placeholder="React&#10;TypeScript&#10;Node.js" 
+                    value={newJob.skills}
+                    onChange={(e) => setNewJob({ ...newJob, skills: e.target.value })}
+                    style={{ ...inputStyle, height: '100px', resize: 'none' }}
+                  />
+                </div>
               </div>
 
               <textarea 
@@ -275,6 +371,16 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [] }) => {
   );
 };
 
-/* replaced */
+const inputStyle = {
+  width: '100%',
+  background: 'rgba(255,255,255,0.03)',
+  border: '1px solid rgba(255,255,255,0.1)',
+  padding: '1.25rem',
+  borderRadius: '16px',
+  color: 'white',
+  fontSize: '1rem',
+  outline: 'none',
+  transition: 'all 0.3s'
+};
 
 export default AdminJobDescriptions;

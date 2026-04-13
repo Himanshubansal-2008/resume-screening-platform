@@ -12,18 +12,62 @@ import {
   User,
   Calendar,
   FileText,
-  BadgeCheck
+  BadgeCheck,
+  StickyNote,
+  Save,
+  ChevronDown,
+  ChevronUp,
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const AdminResumeDatabase = ({ candidates, onOpenChat }) => {
+const AdminResumeDatabase = ({ candidates = [], onOpenChat, onRefresh }) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [editingNotes, setEditingNotes] = useState({}); // { candidateId: text }
+  const [expandedNotes, setExpandedNotes] = useState({}); // { candidateId: boolean }
+  const [isSaving, setIsSaving] = useState(null); // candidateId
 
   const filteredCandidates = candidates.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.skills.some(s => s.toLowerCase().includes(searchTerm.toLowerCase()))
+    (c.role && c.role.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (c.skills && c.skills.some(s => s.toLowerCase().includes(searchTerm.toLowerCase())))
   );
+
+  const handleSaveNotes = async (id) => {
+    const noteContent = editingNotes[id] !== undefined ? editingNotes[id] : (candidates.find(c => c.id === id)?.notes || "");
+    
+    setIsSaving(id);
+    try {
+        const response = await fetch(`http://localhost:5001/api/candidates/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notes: noteContent })
+        });
+        if (response.ok) {
+            // Success - update parent if possible
+            if (onRefresh) onRefresh();
+            setIsSaving(null);
+        }
+    } catch (err) {
+        console.error("Save failed:", err);
+        setIsSaving(null);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this candidate?")) return;
+    try {
+        const response = await fetch(`http://localhost:5001/api/candidates/${id}`, {
+            method: 'DELETE'
+        });
+        if (response.ok) {
+            // Ideally trigger onRefresh here, but for now we rely on the parent's refresh or state sync
+            window.location.reload(); 
+        }
+    } catch (err) {
+        console.error("Delete failed:", err);
+    }
+  };
 
   return (
     <div className="fadeIn">
@@ -78,15 +122,14 @@ const AdminResumeDatabase = ({ candidates, onOpenChat }) => {
 
       {/* Card Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '2rem' }}>
-        <AnimatePresence>
+        <AnimatePresence mode="popLayout">
             {filteredCandidates.map(c => (
               <motion.div 
                 layout
                 key={c.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.3 }}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
                 className="glass-card"
                 style={{ 
                     padding: '1.75rem', 
@@ -130,7 +173,7 @@ const AdminResumeDatabase = ({ candidates, onOpenChat }) => {
 
                 {/* Skills Section */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {c.skills.map(skill => (
+                    {(c.skills || []).map(skill => (
                         <span key={skill} style={{ padding: '6px 12px', background: 'rgba(255, 255, 255, 0.05)', color: '#94a3b8', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '600', border: '1px solid rgba(255,255,255,0.08)' }}>
                             {skill}
                         </span>
@@ -140,10 +183,43 @@ const AdminResumeDatabase = ({ candidates, onOpenChat }) => {
                 {/* Footer Metadata */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#64748b', fontSize: '0.75rem' }}>
-                        <Calendar size={14} /> Processed {c.applied}
+                        <Calendar size={14} /> {c.applied}
                     </div>
                     
+                    
                     <div style={{ display: 'flex', gap: '10px' }}>
+                        <button 
+                            onClick={() => setExpandedNotes(prev => ({ ...prev, [c.id]: !prev[c.id] }))}
+                            title="Add/Edit Notes"
+                            style={{ 
+                                background: expandedNotes[c.id] ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.05)', 
+                                color: expandedNotes[c.id] ? '#3b82f6' : '#cbd5e1', 
+                                border: expandedNotes[c.id] ? '1px solid #3b82f6' : '1px solid rgba(255,255,255,0.08)',
+                                width: '40px',
+                                height: '40px',
+                                borderRadius: '10px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                position: 'relative'
+                            }}
+                        >
+                            <StickyNote size={18} />
+                            {c.notes && c.notes.length > 0 && (
+                                <div style={{ 
+                                    position: 'absolute', 
+                                    top: '4px', 
+                                    right: '4px', 
+                                    width: '8px', 
+                                    height: '8px', 
+                                    background: '#3b82f6', 
+                                    borderRadius: '50%', 
+                                    border: '2px solid #0a0f1d' 
+                                }}></div>
+                            )}
+                        </button>
                         <button 
                             onClick={() => onOpenChat(c)}
                             title="Chat with AI"
@@ -157,15 +233,14 @@ const AdminResumeDatabase = ({ candidates, onOpenChat }) => {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
+                                cursor: 'pointer'
                             }}
-                            className="btn-hover-glow"
                         >
                             <MessageSquare size={18} />
                         </button>
                         <button 
                             title="Download Resume"
+                            onClick={() => window.open(`http://localhost:5001/api/candidates/${c.id}/resume`, '_blank')}
                             style={{ 
                                 background: 'rgba(255, 255, 255, 0.05)', 
                                 color: '#cbd5e1', 
@@ -183,6 +258,7 @@ const AdminResumeDatabase = ({ candidates, onOpenChat }) => {
                         </button>
                         <button 
                             title="Remove Record"
+                            onClick={() => handleDelete(c.id)}
                             style={{ 
                                 background: 'rgba(239, 68, 68, 0.1)', 
                                 color: '#ef4444', 
@@ -200,6 +276,49 @@ const AdminResumeDatabase = ({ candidates, onOpenChat }) => {
                         </button>
                     </div>
                 </div>
+
+                {/* Notes Section */}
+                <AnimatePresence>
+                  {expandedNotes[c.id] && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      style={{ overflow: 'hidden' }}
+                    >
+                      <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                           <span style={{ fontSize: '0.7rem', fontWeight: '800', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.05em' }}>HR Recruiting Notes</span>
+                           <button 
+                             onClick={() => handleSaveNotes(c.id)}
+                             disabled={isSaving === c.id}
+                             style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: '700' }}
+                           >
+                             {isSaving === c.id ? <Loader2 size={14} className="spin" /> : <Save size={14} />}
+                             {isSaving === c.id ? 'Saving...' : 'Save Notes'}
+                           </button>
+                        </div>
+                        <textarea 
+                          placeholder="Type internal candidate feedback here..."
+                          defaultValue={c.notes || ""}
+                          onChange={(e) => setEditingNotes(prev => ({ ...prev, [c.id]: e.target.value }))}
+                          style={{ 
+                            width: '100%', 
+                            background: 'rgba(0,0,0,0.2)', 
+                            border: '1px solid rgba(255,255,255,0.05)', 
+                            borderRadius: '12px', 
+                            padding: '12px', 
+                            color: 'white', 
+                            fontSize: '0.85rem', 
+                            minHeight: '80px', 
+                            resize: 'vertical',
+                            outline: 'none'
+                          }}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             ))}
         </AnimatePresence>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Users, 
   FileText, 
@@ -18,7 +18,11 @@ import {
   ExternalLink,
   ChevronRight,
   ClipboardList,
-  Bot
+  Bot,
+  Sparkles,
+  Zap,
+  CheckCircle2,
+  ListRestart
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -35,14 +39,21 @@ import AdminResumeDatabase from './components/admin/AdminResumeDatabase';
 import AdminJobDescriptions from './components/admin/AdminJobDescriptions';
 import AIChatbotSidebar from './components/admin/AIChatbotSidebar';
 import CandidateSubmit from './components/candidate/CandidateSubmit';
+import CandidateJobBoard from './components/candidate/CandidateJobBoard';
 import CandidatePrepHub from './components/candidate/CandidatePrepHub';
 import CandidateSimulation from './components/candidate/CandidateSimulation';
+import LiveKeywordStream from './components/shared/LiveKeywordStream';
 
-const ADMIN_EMAILS = ["himanshubansal1803@gmail.com", "nikhiltelkar19@gmail.com", "hartejsinghsandhu2806@gmail.com"];
+const ADMIN_EMAILS = [
+  "himanshubansal1803@gmail.com", 
+  "nikhiltelkar19@gmail.com", 
+  "hartejsinghsandhu2806@gmail.com", 
+  "vivekkrishna7985@gmail.com"
+];
 
 const API_BASE_URL = "http://localhost:5001/api";
 
-const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candidates, jobs, onRefresh }) => {
+const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candidates, jobs, onRefresh, recommendations }) => {
   const isAdmin = role === 'admin';
 
   return (
@@ -73,7 +84,7 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
               <button className={`nav-item-pro ${activeTab === 'ingestion' ? 'active' : ''}`} onClick={() => setActiveTab('ingestion')}>
                 <FileText size={20} /> <span>Data Ingestion</span>
               </button>
-              <button className={`nav-item-pro`} onClick={onOpenChat} style={{ marginTop: '1rem', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+              <button className={`nav-item-pro`} onClick={() => onOpenChat()} style={{ marginTop: '1rem', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
                 <Bot size={20} /> <span>AI Copilot</span>
               </button>
             </>
@@ -87,6 +98,9 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
               </button>
               <button className={`nav-item-pro ${activeTab === 'mockbot' ? 'active' : ''}`} onClick={() => setActiveTab('mockbot')}>
                 <MessageSquare size={20} /> <span>Simulation Arena</span>
+              </button>
+              <button className={`nav-item-pro ${activeTab === 'jobboard' ? 'active' : ''}`} onClick={() => setActiveTab('jobboard')}>
+                <Search size={20} /> <span>Job Openings</span>
               </button>
               <button className={`nav-item-pro ${activeTab === 'submit' ? 'active' : ''}`} onClick={() => setActiveTab('submit')}>
                 <FileText size={20} /> <span>Submission Portal</span>
@@ -141,11 +155,12 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
           <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
             {isAdmin ? (
                activeTab === 'dashboard' ? <AdminDashboard candidates={candidates} /> : 
-               activeTab === 'database' ? <AdminResumeDatabase candidates={candidates} onOpenChat={onOpenChat} /> :
-               activeTab === 'jobs' ? <AdminJobDescriptions jobs={jobs} /> : <AdminIngestionView onRefresh={onRefresh} />
+               activeTab === 'database' ? <AdminResumeDatabase candidates={candidates} onOpenChat={onOpenChat} onRefresh={onRefresh} /> :
+               activeTab === 'jobs' ? <AdminJobDescriptions jobs={jobs} onRefresh={onRefresh} /> : <AdminIngestionView onRefresh={onRefresh} />
             ) : (
-               activeTab === 'dashboard' ? <CandidateHome user={user} candidates={candidates} /> : 
-               activeTab === 'submit' ? <CandidateSubmit setActiveTab={setActiveTab} /> :
+               activeTab === 'dashboard' ? <CandidateHome user={user} candidates={candidates} recommendations={recommendations} /> : 
+               activeTab === 'submit' ? <CandidateSubmit setActiveTab={setActiveTab} onRefresh={onRefresh} /> :
+               activeTab === 'jobboard' ? <CandidateJobBoard user={user} allJobs={jobs} recommendations={recommendations} /> :
                activeTab === 'prephub' ? <CandidatePrepHub setActiveTab={setActiveTab} /> :
                activeTab === 'mockbot' ? <CandidateSimulation setActiveTab={setActiveTab} /> : <Placeholder />
             )}
@@ -157,38 +172,71 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
 };
 
 const AdminIngestionView = ({ onRefresh }) => {
-    const [candidateName, setCandidateName] = useState("");
-    const [selectedFile, setSelectedFile] = useState(null);
-    const [isIngesting, setIsIngesting] = useState(false);
-    const [success, setSuccess] = useState(false);
+    const [fileStatus, setFileStatus] = useState(null);
+    const [extractedName, setExtractedName] = useState("");
+    const fileInputRef = useRef(null);
 
-    const handleIngest = async (e) => {
-        e.preventDefault();
-        if (!candidateName || !selectedFile) return;
+    const handleFileChange = async (fileOrEvent) => {
+      let file = null;
+      if (fileOrEvent?.target?.files) file = fileOrEvent.target.files[0];
+      else if (fileOrEvent instanceof File) file = fileOrEvent;
+      else return;
 
-        setIsIngesting(true);
-        try {
-            const response = await fetch(`${API_BASE_URL}/candidates/ingest`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    name: candidateName, 
-                    fileName: selectedFile.name 
-                })
-            });
+      if (!file) return;
 
-            if (response.ok) {
-                setSuccess(true);
-                setCandidateName("");
-                setSelectedFile(null);
-                if (onRefresh) onRefresh();
-                setTimeout(() => setSuccess(false), 3000);
-            }
-        } catch (error) {
-            console.error("Ingestion failed:", error);
-        } finally {
-            setIsIngesting(false);
+      setFileStatus('uploading');
+
+      const formData = new FormData();
+      formData.append('resumePdf', file);
+      formData.append('name', 'Admin Upload');
+      formData.append('email', `admin-upload-${Date.now()}@hireai.com`);
+      formData.append('role', 'Any Role');
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/candidates`, {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Server returned an error');
         }
+
+        const data = await response.json();
+        setExtractedName(data.name || 'Extracted Candidate');
+        setFileStatus('extracted');
+        if (onRefresh) onRefresh();
+      } catch (error) {
+        console.error(error);
+        setFileStatus('error');
+      }
+    };
+
+    const handleZoneClick = () => {
+      fileInputRef.current.click();
+    };
+
+    const [isDragActive, setIsDragActive] = useState(false);
+
+    const handleDragOver = (e) => {
+      e.preventDefault();
+      setIsDragActive(true);
+    };
+
+    const handleDragLeave = (e) => {
+      e.preventDefault();
+      setIsDragActive(false);
+    };
+
+    const handleDrop = (e) => {
+      e.preventDefault();
+      setIsDragActive(false);
+      if (fileStatus === 'error' || fileStatus === null || fileStatus === 'extracted') {
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+          handleFileChange(e.dataTransfer.files[0]);
+        }
+      }
     };
 
     return (
@@ -203,82 +251,59 @@ const AdminIngestionView = ({ onRefresh }) => {
                 </div>
             </div>
             
-            <form onSubmit={handleIngest} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <label style={{ color: 'white', fontWeight: '700', fontSize: '0.9rem' }}>Candidate Full Name</label>
-                    <input 
-                        type="text" 
-                        placeholder="e.g. John Doe"
-                        value={candidateName}
-                        onChange={(e) => setCandidateName(e.target.value)}
-                        required
-                        style={{ 
-                            width: '100%', 
-                            background: 'rgba(255,255,255,0.03)', 
-                            border: '1px solid rgba(255,255,255,0.1)', 
-                            padding: '1.25rem', 
-                            borderRadius: '16px', 
-                            color: 'white',
-                            fontSize: '1rem',
-                            outline: 'none'
-                        }}
-                    />
-                </div>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileChange} 
+              style={{ display: 'none' }} 
+              accept="application/pdf"
+            />
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <label style={{ color: 'white', fontWeight: '700', fontSize: '0.9rem' }}>Resume Document</label>
-                    <div 
-                        style={{ 
-                            position: 'relative',
-                            width: '100%', 
-                            height: '180px', 
-                            background: selectedFile ? 'rgba(59, 130, 246, 0.05)' : 'rgba(255,255,255,0.01)', 
-                            border: selectedFile ? '2px solid #3b82f6' : '2px dashed rgba(255,255,255,0.1)', 
-                            borderRadius: '24px', 
-                            display: 'flex', 
-                            flexDirection: 'column', 
-                            alignItems: 'center', 
-                            justifyContent: 'center', 
-                            gap: '1rem',
-                            transition: 'all 0.3s'
-                        }}
-                    >
-                        <input 
-                            type="file" 
-                            onChange={(e) => setSelectedFile(e.target.files[0])}
-                            style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
-                        />
-                        <FileText size={48} color={selectedFile ? '#3b82f6' : '#94a3b8'} />
-                        <span style={{ color: selectedFile ? 'white' : '#94a3b8', fontWeight: '600' }}>
-                            {selectedFile ? selectedFile.name : 'Click to select or drag resume file'}
-                        </span>
-                        {selectedFile && <span style={{ fontSize: '0.75rem', color: '#3b82f6' }}>File ready for AI extraction</span>}
+            <div 
+                onClick={handleZoneClick} 
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                style={{ 
+                    cursor: 'pointer', 
+                    width: '100%', 
+                    height: '240px', 
+                    background: isDragActive ? 'rgba(59, 130, 246, 0.05)' : 'rgba(255,255,255,0.01)', 
+                    border: fileStatus === 'error' ? '2px dashed #ef4444' : (isDragActive ? '2px dashed #3b82f6' : '2px dashed rgba(255,255,255,0.1)'), 
+                    borderRadius: '24px', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    gap: '1rem',
+                    transition: 'all 0.3s'
+                }}
+            >
+                <div style={{ width: '80px', height: '80px', borderRadius: '20px', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.5rem', position: 'relative' }}>
+                   <FileText size={40} color={fileStatus === 'extracted' ? '#10b981' : '#3b82f6'} />
+                   <LiveKeywordStream isAnalyzing={fileStatus === 'uploading'} />
+                </div>
+                <span style={{ color: 'white', fontWeight: '700', fontSize: '1.1rem' }}>
+                    {fileStatus === 'uploading' ? 'Analyzing Resume Content...' : 
+                     fileStatus === 'extracted' ? 'Resume Processed Successfully!' : 'Drop Resume to Analyze'}
+                </span>
+                <p style={{ color: '#64748b', fontSize: '0.9rem' }}>Supports PDF format up to 10MB</p>
+            </div>
+
+            {fileStatus === 'extracted' && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: '2rem', padding: '1.5rem', background: 'rgba(16, 185, 129, 0.05)', borderRadius: '16px', border: '1px solid rgba(16, 185, 129, 0.1)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                            <span style={{ color: '#10b981', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>Extracted Identity</span>
+                            <div style={{ color: 'white', fontSize: '1.25rem', fontWeight: '800', marginTop: '4px' }}>{extractedName}</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                             <button className="btn-action-pro" style={{ background: 'rgba(255,255,255,0.05)', color: 'white' }} onClick={() => setFileStatus(null)}>Clear</button>
+                             <button className="btn-action-pro" style={{ background: '#10b981', color: 'white' }}>Save to Database</button>
+                        </div>
                     </div>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                    <button 
-                        type="submit"
-                        disabled={isIngesting || !candidateName || !selectedFile}
-                        className="btn-action-pro" 
-                        style={{ 
-                            padding: '1.25rem 3rem', 
-                            background: success ? '#10b981' : '#3b82f6', 
-                            color: 'white', 
-                            borderRadius: '16px', 
-                            fontSize: '1rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px',
-                            opacity: (isIngesting || !candidateName || !selectedFile) ? 0.5 : 1
-                        }}
-                    >
-                        {isIngesting ? <><motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}><Cpu size={20} /></motion.div> Analyzing...</> : 
-                         success ? <><CheckCircle size={20} /> Success!</> : 
-                         <><Plus size={20} /> Start AI Ingestion</>}
-                    </button>
-                </div>
-            </form>
+                </motion.div>
+            )}
 
             <div style={{ marginTop: '4rem', paddingTop: '2rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                 <h4 style={{ color: 'white', fontSize: '1.2rem', fontWeight: '800', marginBottom: '1.5rem' }}>Batch Processing</h4>
@@ -293,77 +318,109 @@ const AdminIngestionView = ({ onRefresh }) => {
     );
 };
 
-const CandidateHome = ({ user, candidates }) => {
-  // Simulate finding the current candidate's data
-  // In a real app, this would be a filtered match or another API call
-  const candidate = candidates.find(c => c.name.includes(user?.firstName || "Alex")) || candidates[0];
-  
+const CandidateHome = ({ user, candidates, recommendations = [] }) => {
+  const userEmail = user?.primaryEmailAddress?.emailAddress;
+  const candidate = candidates.find(c => c.email && userEmail && c.email === userEmail) || candidates[0];
   const matchScore = candidate?.match || 0;
   
   return (
-  <div className="fadeIn" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.8fr', gap: '2rem' }}>
-    <div className="glass-card" style={{ textAlign: 'center', position: 'relative', overflow: 'hidden', background: 'linear-gradient(145deg, rgba(59, 130, 246, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%)', border: '1px solid rgba(59, 130, 246, 0.15)' }}>
-       <div style={{ position: 'absolute', top: '-20%', right: '-20%', width: '200px', height: '200px', background: 'radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%)', filter: 'blur(40px)', zIndex: 0 }}></div>
-       
-       <div style={{ position: 'relative', zIndex: 1 }}>
-           <h3 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', fontSize: '1.15rem', marginBottom: '2.5rem', color: 'white', fontWeight: '800' }}>
+  <div className="fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.8fr', gap: '2rem' }}>
+      <div className="glass-card" style={{ textAlign: 'center', background: 'linear-gradient(145deg, rgba(59, 130, 246, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%)', border: '1px solid rgba(59, 130, 246, 0.15)', padding: '2.5rem' }}>
+          <h3 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', fontSize: '1.15rem', marginBottom: '2.5rem', color: 'white', fontWeight: '800' }}>
               <Cpu size={22} color="#3b82f6" /> AI Fit Analysis
-           </h3>
-           
-           <div style={{ fontSize: '6.5rem', fontWeight: '900', letterSpacing: '-4px', color: 'white', marginBottom: '0.2rem', textShadow: '0 0 40px rgba(59, 130, 246, 0.3)' }}>
+          </h3>
+          
+          <div style={{ fontSize: '6.5rem', fontWeight: '900', letterSpacing: '-4px', color: 'white', marginBottom: '0.2rem' }}>
               {matchScore}<span style={{ color: '#3b82f6', fontSize: '4rem' }}>%</span>
-           </div>
-           <p style={{ color: '#94a3b8', fontWeight: '600', fontSize: '1rem', marginBottom: '3rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Global Match Score</p>
-           
-           <div className="pro-progress-bg" style={{ height: '8px', marginBottom: '3.5rem', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', overflow: 'hidden' }}>
-              <motion.div initial={{ width: 0 }} animate={{ width: `${matchScore}%` }} transition={{ duration: 1.5, ease: 'easeOut' }} style={{ height: '100%', background: 'linear-gradient(90deg, #3b82f6, #06b6d4)', borderRadius: '4px', boxShadow: '0 0 10px rgba(59,130,246,0.5)' }}></motion.div>
-           </div>
-           
-           <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'rgba(0,0,0,0.2)', padding: '1.5rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+          </div>
+          <p style={{ color: '#94a3b8', fontWeight: '600', fontSize: '1rem', marginBottom: '3rem', textTransform: 'uppercase' }}>Global Match Score</p>
+          
+          <div className="pro-progress-bg" style={{ height: '8px', marginBottom: '3.5rem', background: 'rgba(255,255,255,0.08)', borderRadius: '4px' }}>
+              <motion.div initial={{ width: 0 }} animate={{ width: `${matchScore}%` }} style={{ height: '100%', background: 'linear-gradient(90deg, #3b82f6, #06b6d4)', borderRadius: '4px' }}></motion.div>
+          </div>
+          
+          <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'rgba(0,0,0,0.2)', padding: '1.5rem', borderRadius: '16px' }}>
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: '800', marginBottom: '8px', color: 'white' }}>
-                  <span>Technical Stack</span> <span style={{ color: '#3b82f6'}}>94%</span>
-                </div>
-                <div className="pro-progress-bg" style={{ background: 'rgba(255,255,255,0.08)', height: '6px', borderRadius: '3px' }}>
-                   <motion.div initial={{ width: 0 }} animate={{ width: '94%' }} transition={{ duration: 1.5, delay: 0.2 }} style={{ height: '100%', background: '#3b82f6', borderRadius: '3px' }}></motion.div>
-                </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: '800', marginBottom: '8px', color: 'white' }}>
+                      <span>Technical Alignment</span> <span style={{ color: '#3b82f6'}}>94%</span>
+                  </div>
+                  <div className="pro-progress-bg" style={{ background: 'rgba(255,255,255,0.08)', height: '6px' }}>
+                      <div style={{ width: '94%', height: '100%', background: '#3b82f6', borderRadius: '3px' }}></div>
+                  </div>
               </div>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: '800', marginBottom: '8px', color: 'white' }}>
-                  <span>Domain relevance</span> <span style={{ color: '#06b6d4'}}>72%</span>
-                </div>
-                <div className="pro-progress-bg" style={{ background: 'rgba(255,255,255,0.08)', height: '6px', borderRadius: '3px' }}>
-                   <motion.div initial={{ width: 0 }} animate={{ width: '72%' }} transition={{ duration: 1.5, delay: 0.4 }} style={{ height: '100%', background: '#06b6d4', borderRadius: '3px' }}></motion.div>
-                </div>
-              </div>
-           </div>
-       </div>
-    </div>
-
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      <div className="glass-card" style={{ borderLeft: '4px solid #10b981', background: 'linear-gradient(90deg, rgba(16,185,129,0.05) 0%, transparent 100%)' }}>
-        <h4 style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem', fontSize: '1.1rem', fontWeight: '800' }}><TrendingUp size={22} /> Core Strengths Detected</h4>
-        <p style={{ color: '#94a3b8', lineHeight: '1.7', fontSize: '0.95rem' }}>
-            {candidate?.summary || "Your expertise matches our high-priority requirements. Establishing you as a top-tier candidate."}
-        </p>
+          </div>
       </div>
-      <div className="glass-card" style={{ borderLeft: '4px solid #f59e0b', background: 'linear-gradient(90deg, rgba(245,158,11,0.05) 0%, transparent 100%)' }}>
-        <h4 style={{ color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem', fontSize: '1.1rem', fontWeight: '800' }}><AlertCircle size={22} /> AI Skill Gaps Flagged</h4>
-        <p style={{ color: '#94a3b8', lineHeight: '1.7', fontSize: '0.95rem', marginBottom: '1rem' }}>
-            AI detected some gaps in specific cloud infrastructure requirements compared to the role baseline.
-        </p>
-        <div style={{ background: 'rgba(245,158,11,0.1)', padding: '12px', borderRadius: '12px', color: '#fcd34d', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Cpu size={16} /> Our AI has curated specific prep modules to address this before your interview.
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        {/* Core Strengths */}
+        <div className="glass-card" style={{ borderLeft: '4px solid #10b981', padding: '2rem' }}>
+          <h4 style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem', fontWeight: '800' }}><TrendingUp size={22} /> Core Strengths Detected</h4>
+          <p style={{ color: '#cbd5e1', lineHeight: '1.7' }}>{candidate?.summary || "Analyzing your profile..."}</p>
+        </div>
+
+        {/* AI Resume Insights */}
+        <div className="glass-card" style={{ borderLeft: '4px solid #3b82f6', background: 'linear-gradient(145deg, rgba(15, 23, 42, 0.4) 0%, rgba(2, 6, 23, 0.4) 100%)', padding: '2rem' }}>
+          <h4 style={{ color: '#3b82f6', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <Zap size={20} fill="#3b82f6" /> AI Optimization Tips
+          </h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {(candidate?.feedback && candidate.feedback.length > 0) ? (
+              candidate.feedback.map((tip, idx) => (
+                <motion.div 
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.1 }}
+                  key={idx} 
+                  style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}
+                >
+                  <CheckCircle2 size={18} color="#10b981" style={{ marginTop: '2px', flexShrink: 0 }} />
+                  <p style={{ color: '#cbd5e1', fontSize: '0.9rem', lineHeight: '1.5', margin: 0 }}>{tip}</p>
+                </motion.div>
+              ))
+            ) : (
+              <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b', fontSize: '0.9rem' }}>
+                <ListRestart size={32} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
+                <p>Upload your latest resume to generate personalized AI improvement tips.</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+    </div>
+
+    {/* Recommendations Section */}
+    <div className="fadeIn">
+        <h3 style={{ color: 'white', fontSize: '1.5rem', fontWeight: '800', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Sparkles size={24} color="#3b82f6" /> Recommended Positions For You
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+            {recommendations.length > 0 ? recommendations.map(job => (
+                <motion.div key={job.id} whileHover={{ y: -5 }} className="glass-card" style={{ border: '1px solid rgba(59, 130, 246, 0.2)', padding: '1.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                        <span className="pill-capsule" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>{job.matchPercent}% Match</span>
+                    </div>
+                    <h4 style={{ color: 'white', fontSize: '1.1rem', fontWeight: '800', marginBottom: '0.5rem' }}>{job.title}</h4>
+                    <p style={{ color: '#94a3b8', fontSize: '0.8rem', marginBottom: '1rem' }}>{job.department} • {job.location}</p>
+                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '8px', fontSize: '0.8rem', color: '#cbd5e1', fontStyle: 'italic', marginBottom: '1.5rem' }}>
+                        "{job.reason}"
+                    </div>
+                    <button className="btn-action-pro" style={{ width: '100%', background: '#3b82f6', color: 'white', borderRadius: '10px' }}>Apply Now</button>
+                </motion.div>
+            )) : (
+                <div style={{ gridColumn: '1/-1', padding: '3rem', textAlign: 'center', color: '#64748b', background: 'rgba(255,255,255,0.01)', borderRadius: '16px', border: '1px dashed rgba(255,255,255,0.05)' }}>
+                    AI is scanning current openings for your profile...
+                </div>
+            )}
+        </div>
     </div>
   </div>
   );
 };
 
 const Placeholder = () => (
-    <div className="user-card fadeIn" style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed var(--pro-border)' }}>
-        <span style={{ color: 'var(--pro-text-sec)', fontWeight: '600' }}>Module implementation in progress...</span>
+    <div className="user-card fadeIn" style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed rgba(255,255,255,0.1)' }}>
+        <span style={{ color: '#64748b', fontWeight: '600' }}>Module implementation in progress...</span>
     </div>
 );
 
@@ -373,67 +430,61 @@ const App = () => {
   const [activeChatCandidate, setActiveChatCandidate] = useState(null);
   const [candidates, setCandidates] = useState([]);
   const [jobs, setJobs] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
   const { user } = useUser();
   const isAdmin = ADMIN_EMAILS.includes(user?.primaryEmailAddress?.emailAddress);
+
+  const userEmail = user?.primaryEmailAddress?.emailAddress;
+  const userId = user?.id;
 
   const fetchData = React.useCallback(async () => {
     try {
       const [candRes, jobsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/candidates`),
-        fetch(`${API_BASE_URL}/jobs`)
+        fetch(`${API_BASE_URL}/candidates`, { cache: 'no-store' }),
+        fetch(`${API_BASE_URL}/jobs`, { cache: 'no-store' })
       ]);
       const candData = await candRes.json();
       const jobsData = await jobsRes.json();
+      
       setCandidates(candData);
       setJobs(jobsData);
+
+      // Compute the active candidate used by the dashboard
+      const dashboardCandidate = candData.find(c => c.email && userEmail && c.email === userEmail) || candData[0];
+
+      // Fetch AI recommendations for exact displayed candidate (including all=true for Job Board)
+      if (!isAdmin && dashboardCandidate) {
+        const urlParams = dashboardCandidate.email 
+          ? `email=${dashboardCandidate.email}&id=${dashboardCandidate.id}&all=true` 
+          : `id=${dashboardCandidate.id}&all=true`;
+          
+        const recRes = await fetch(`${API_BASE_URL}/candidates/recommendations?${urlParams}`);
+        const recData = await recRes.json();
+        if (Array.isArray(recData)) {
+          setRecommendations(recData);
+        }
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
     }
-  }, []);
+  }, [isAdmin, userId, userEmail]);
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, activeTab]);
 
   return (
     <>
       <SignedOut>
         <div className="login-bg">
           <div className="login-blob" style={{ top: '-10%', left: '-10%' }}></div>
-          <div className="login-blob" style={{ bottom: '-10%', right: '-10%', background: 'rgba(6, 182, 212, 0.1)' }}></div>
-          
-          <motion.div 
-            initial={{ opacity: 0, y: 40 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="login-card"
-          >
+          <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} className="login-card">
             <div style={{ display: 'inline-flex', padding: '18px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '20px', marginBottom: '2rem' }}>
               <Cpu size={36} color="#3b82f6" />
             </div>
-            
-            <h1 style={{ fontSize: '3rem', fontWeight: '800', marginBottom: '1rem', color: 'white', letterSpacing: '-0.04em' }}>
-              HireAI <span style={{ color: '#3b82f6' }}>Portal</span>
-            </h1>
-            
-            <p style={{ color: '#94a3b8', marginBottom: '3rem', fontSize: '1.1rem', lineHeight: '1.6' }}>
-                Bridging the gap between manual screening and AI-powered interview readiness.
-            </p>
-
-            <SignInButton mode="modal">
-              <button className="login-btn">
-                Enter Dashboard <ChevronRight size={20} style={{ marginLeft: '8px', verticalAlign: 'middle' }} />
-              </button>
-            </SignInButton>
-
-            <div style={{ marginTop: '3rem', display: 'flex', justifyContent: 'center', gap: '1.5rem', opacity: 0.6 }}>
-               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: '#94a3b8' }}>
-                 <CheckCircle size={14} color="#10b981" /> AI Scoring
-               </div>
-               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: '#94a3b8' }}>
-                 <CheckCircle size={14} color="#10b981" /> Smarter Prep
-               </div>
-            </div>
+            <h1 style={{ fontSize: '3rem', fontWeight: '800', marginBottom: '1rem', color: 'white' }}>HireAI Portal</h1>
+            <p style={{ color: '#94a3b8', marginBottom: '3rem' }}>Next-gen AI recruitment screening and preparation platform.</p>
+            <SignInButton mode="modal"><button className="login-btn">Enter Platform <ChevronRight size={20} /></button></SignInButton>
           </motion.div>
         </div>
       </SignedOut>
@@ -447,6 +498,7 @@ const App = () => {
           candidates={candidates}
           jobs={jobs}
           onRefresh={fetchData}
+          recommendations={recommendations}
           onOpenChat={(candidate) => {
             setActiveChatCandidate(candidate || null);
             setIsChatOpen(true);

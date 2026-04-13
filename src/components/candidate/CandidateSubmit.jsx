@@ -1,29 +1,84 @@
-import React, { useState } from 'react';
-import { FileText, UploadCloud, CheckCircle, Cpu, Loader2, ArrowRight } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { FileText, UploadCloud, CheckCircle, Cpu, Loader2, ArrowRight, Zap, Target } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useUser } from '@clerk/clerk-react';
+import LiveKeywordStream from '../shared/LiveKeywordStream';
 
-const CandidateSubmit = ({ setActiveTab }) => {
-  const [uploadState, setUploadState] = useState('idle'); // idle, uploading, analyzing, complete
+const CandidateSubmit = ({ setActiveTab, onRefresh }) => {
+  const [uploadState, setUploadState] = useState('idle'); // idle, uploading, complete, error
   const [score, setScore] = useState(0);
+  const [feedback, setFeedback] = useState([]);
+  const [reasoning, setReasoning] = useState('');
+  const [filename, setFilename] = useState('');
+  const fileInputRef = useRef(null);
+  const { user } = useUser();
 
-  const handleUpload = () => {
+  const handleFileChange = async (fileOrEvent) => {
+    let file = null;
+    if (fileOrEvent?.target?.files) file = fileOrEvent.target.files[0];
+    else if (fileOrEvent instanceof File) file = fileOrEvent;
+    else return;
+
+    if (!file) return;
+
+    setFilename(file.name);
     setUploadState('uploading');
-    
-    setTimeout(() => {
-      setUploadState('analyzing');
-      
-      // Animate score from 0 to 88
-      let currentScore = 0;
-      const interval = setInterval(() => {
-        currentScore += 2;
-        setScore(currentScore);
-        if (currentScore >= 88) {
-          clearInterval(interval);
-          setUploadState('complete');
-        }
-      }, 40);
 
-    }, 2000); // 2 seconds of "uploading"
+    const formData = new FormData();
+    formData.append('resumePdf', file);
+    formData.append('name', user?.fullName || 'Guest Candidate');
+    formData.append('email', user?.primaryEmailAddress?.emailAddress || 'guest@example.com');
+    formData.append('role', 'Any Role');
+
+    try {
+      const response = await fetch('http://localhost:5001/api/candidates', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Server returned an error');
+      }
+
+      const data = await response.json();
+      setScore(data.match || data.score || 0);
+      setFeedback(data.feedback || []);
+      setReasoning(data.applications?.[0]?.strengths || '');
+      setUploadState('complete');
+      if (onRefresh) onRefresh();
+    } catch (error) {
+      console.error(error);
+      setUploadState('error');
+    }
+  };
+
+  const handleZoneClick = () => {
+    if (uploadState === 'idle' || uploadState === 'error') {
+      fileInputRef.current.click();
+    }
+  };
+
+  const [isDragActive, setIsDragActive] = useState(false);
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragActive(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragActive(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragActive(false);
+    if (uploadState === 'idle' || uploadState === 'error') {
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        handleFileChange(e.dataTransfer.files[0]);
+      }
+    }
   };
 
   return (
@@ -36,21 +91,32 @@ const CandidateSubmit = ({ setActiveTab }) => {
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '2rem' }}>
         {/* Upload Zone */}
         <div 
-            onClick={uploadState === 'idle' ? handleUpload : undefined}
+            onClick={handleZoneClick}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
             style={{ 
-                background: 'rgba(255,255,255,0.02)', 
-                border: '2px dashed rgba(59, 130, 246, 0.4)', 
+                background: isDragActive ? 'rgba(59, 130, 246, 0.05)' : 'rgba(255,255,255,0.02)', 
+                border: uploadState === 'error' ? '2px dashed #ef4444' : (isDragActive ? '2px dashed #3b82f6' : '2px dashed rgba(59, 130, 246, 0.4)'), 
                 borderRadius: '24px', 
                 padding: '4rem 2rem', 
                 display: 'flex', 
                 flexDirection: 'column', 
                 alignItems: 'center', 
                 justifyContent: 'center', 
-                cursor: uploadState === 'idle' ? 'pointer' : 'default',
+                cursor: (uploadState === 'idle' || uploadState === 'error') ? 'pointer' : 'default',
                 transition: 'all 0.3s',
                 minHeight: '350px'
             }}
         >
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileChange} 
+            style={{ display: 'none' }} 
+            accept="application/pdf"
+          />
+          <LiveKeywordStream isAnalyzing={uploadState === 'uploading' || uploadState === 'analyzing'} />
           <AnimatePresence mode="wait">
             {uploadState === 'idle' && (
               <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ textAlign: 'center' }}>
@@ -58,7 +124,7 @@ const CandidateSubmit = ({ setActiveTab }) => {
                     <UploadCloud size={48} color="#3b82f6" />
                 </div>
                 <h3 style={{ color: 'white', fontSize: '1.25rem', marginBottom: '0.5rem' }}>Drag & Drop Resume</h3>
-                <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Supports PDF, DOCX (Max 5MB)</p>
+                <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Supports PDF (Max 5MB)</p>
               </motion.div>
             )}
 
@@ -92,7 +158,17 @@ const CandidateSubmit = ({ setActiveTab }) => {
                     <CheckCircle size={48} color="#10b981" />
                 </div>
                 <h3 style={{ color: 'white', fontSize: '1.25rem', marginBottom: '0.5rem' }}>Upload Successful</h3>
-                <p style={{ color: '#10b981', fontSize: '0.9rem' }}>Nikhil_Telkar_Resume.pdf processed</p>
+                <p style={{ color: '#10b981', fontSize: '0.9rem' }}>{filename} processed</p>
+              </motion.div>
+            )}
+
+            {uploadState === 'error' && (
+              <motion.div key="error" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={{ textAlign: 'center' }}>
+                <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '20px', borderRadius: '50%', display: 'inline-block', marginBottom: '1.5rem' }}>
+                  <span style={{ fontSize: '48px' }}>❌</span>
+                </div>
+                <h3 style={{ color: 'white', fontSize: '1.25rem', marginBottom: '0.5rem' }}>Upload Failed</h3>
+                <p style={{ color: '#ef4444', fontSize: '0.9rem' }}>Check backend server connection. Click to retry.</p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -109,25 +185,42 @@ const CandidateSubmit = ({ setActiveTab }) => {
                     Upload a file to see AI match insights
                 </div>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                    <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '4rem', fontWeight: '900', color: 'white', letterSpacing: '-2px' }}>
-                            {score}<span style={{ color: '#3b82f6', fontSize: '2.5rem' }}>%</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', height: '100%' }}>
+                    <div style={{ textAlign: 'center', background: 'rgba(59, 130, 246, 0.05)', padding: '1.5rem', borderRadius: '20px', border: '1px solid rgba(59, 130, 246, 0.1)' }}>
+                        <div style={{ fontSize: '3.5rem', fontWeight: '900', color: 'white', letterSpacing: '-2px', lineHeight: 1 }}>
+                            {score}<span style={{ color: '#3b82f6', fontSize: '2rem' }}>%</span>
                         </div>
-                        <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Match score for target role</p>
+                        <p style={{ color: '#94a3b8', fontSize: '0.8rem', marginTop: '8px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>AI Global Match</p>
                     </div>
 
-                    {uploadState === 'complete' && (
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: 'auto' }}>
-                            <div style={{ padding: '1rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '12px', color: '#10b981', fontSize: '0.9rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <CheckCircle size={16} /> Shortlisting criteria met.
+                    {feedback.length > 0 && (
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <h4 style={{ color: 'white', fontSize: '0.9rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px', textTransform: 'uppercase' }}>
+                                <Zap size={16} color="#3b82f6" fill="#3b82f6" /> AI Optimization Insights
+                            </h4>
+                            <div className="custom-scroll" style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '240px', overflowY: 'auto', paddingRight: '8px' }}>
+                                {feedback.map((tip, idx) => (
+                                    <motion.div 
+                                        initial={{ opacity: 0, x: 10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: idx * 0.1 }}
+                                        key={idx} 
+                                        style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderLeft: '3px solid #3b82f6', borderRadius: '0 8px 8px 0', fontSize: '0.85rem', color: '#cbd5e1', lineHeight: '1.4' }}
+                                    >
+                                        {tip}
+                                    </motion.div>
+                                ))}
                             </div>
-                            
+                        </div>
+                    )}
+
+                    {uploadState === 'complete' && (
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: 'auto', paddingTop: '1rem' }}>
                             <button 
-                                onClick={() => setActiveTab('prephub')}
-                                style={{ width: '100%', padding: '1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                                onClick={() => setActiveTab('dashboard')}
+                                style={{ width: '100%', padding: '1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '12px', fontSize: '0.9rem', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s' }}
                             >
-                                Continue to Prep Hub <ArrowRight size={18} />
+                                GO TO DASHBOARD <ArrowRight size={18} />
                             </button>
                         </motion.div>
                     )}
