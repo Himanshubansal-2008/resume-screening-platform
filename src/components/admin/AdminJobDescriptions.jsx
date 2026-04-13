@@ -24,6 +24,7 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [] }) => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newJob, setNewJob] = useState({ title: '', department: '', location: '', type: 'Full-Time', description: '', skills: '' });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isDragActive, setIsDragActive] = useState(false);
   const [keywords, setKeywords] = useState([]);
   const fileInputRef = React.useRef(null);
 
@@ -32,8 +33,12 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [] }) => {
     setJobs(initialJobs);
   }, [initialJobs]);
 
-  const handlePdfUpload = async (e) => {
-    const file = e.target.files[0];
+  const handlePdfUpload = async (fileOrEvent) => {
+    let file = null;
+    if (fileOrEvent?.target?.files) file = fileOrEvent.target.files[0];
+    else if (fileOrEvent instanceof File) file = fileOrEvent;
+    else return;
+
     if (!file) return;
 
     setIsAnalyzing(true);
@@ -64,6 +69,24 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [] }) => {
       console.error("JD Extraction failed:", err);
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragActive(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragActive(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragActive(false);
+    if (!isAnalyzing && e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handlePdfUpload(e.dataTransfer.files[0]);
     }
   };
 
@@ -119,27 +142,38 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [] }) => {
             style={{ display: 'none' }} 
             accept="application/pdf"
           />
-          <button 
-            onClick={() => fileInputRef.current.click()}
-            className="btn-action-pro" 
-            style={{ 
-              padding: '1rem 1.5rem', 
-              background: 'rgba(59, 130, 246, 0.1)', 
-              color: '#3b82f6', 
-              borderRadius: '16px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '10px',
-              border: '1px solid rgba(59, 130, 246, 0.2)',
-              fontSize: '0.9rem',
-              position: 'relative',
-              overflow: 'hidden'
-            }}
+          <div 
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            style={{ position: 'relative' }}
           >
-            {isAnalyzing ? <Loader2 size={18} className="spin" /> : <UploadCloud size={18} />}
-            <span>{isAnalyzing ? 'AI Extracting...' : 'Upload JD PDF'}</span>
-            <LiveKeywordStream isAnalyzing={isAnalyzing} customKeywords={keywords} />
-          </button>
+            <button 
+              onClick={() => fileInputRef.current.click()}
+              className="btn-action-pro" 
+              style={{ 
+                padding: '1rem 1.5rem', 
+                background: isDragActive ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)', 
+                color: '#3b82f6', 
+                borderRadius: '16px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '10px',
+                border: isDragActive ? '1px dashed #3b82f6' : '1px solid rgba(59, 130, 246, 0.2)',
+                fontSize: '0.9rem',
+                position: 'relative',
+                overflow: 'hidden',
+                transition: 'all 0.3s'
+              }}
+            >
+              {isAnalyzing ? <Loader2 size={18} className="spin" /> : <UploadCloud size={18} />}
+              <span>{isAnalyzing ? 'AI Extracting...' : 'Upload JD PDF'}</span>
+              <LiveKeywordStream isAnalyzing={isAnalyzing} customKeywords={keywords} />
+            </button>
+            {isDragActive && (
+              <div style={{ position: 'absolute', inset: 0, borderRadius: '16px', border: '2px dashed #3b82f6', pointerEvents: 'none' }} />
+            )}
+          </div>
           
           <button 
             onClick={() => setShowCreateForm(!showCreateForm)}
