@@ -7,7 +7,6 @@ import {
   History, 
   Filter,
   ArrowUpRight,
-  MoreVertical,
   MessageSquare,
   User,
   Calendar,
@@ -27,7 +26,7 @@ const AdminResumeDatabase = ({ candidates = [], onOpenChat, onRefresh }) => {
   const [expandedNotes, setExpandedNotes] = useState({}); // { candidateId: boolean }
   const [isSaving, setIsSaving] = useState(null); // candidateId
 
-  const filteredCandidates = candidates.filter(c => 
+  const filteredCandidates = candidates.filter(c =>
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (c.role && c.role.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (c.skills && c.skills.some(s => s.toLowerCase().includes(searchTerm.toLowerCase())))
@@ -71,267 +70,157 @@ const AdminResumeDatabase = ({ candidates = [], onOpenChat, onRefresh }) => {
 
   return (
     <div className="fadeIn">
-      {/* Search and Global Chat Trigger */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem', gap: '2rem' }}>
-        <div style={{ position: 'relative', flex: 1, maxWidth: '600px' }}>
-          <Search style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} size={20} />
-          <input 
-            type="text" 
-            placeholder="Search by name, role, or skill..." 
+      {/* Search + AI CTA */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', gap: '1.5rem' }}>
+        <div style={{ position: 'relative', flex: 1, maxWidth: '560px' }}>
+          <Search style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} size={18} />
+          <input
+            type="text"
+            placeholder="Search by name, role, or skill..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ 
-              width: '100%', 
-              background: 'rgba(255,255,255,0.03)', 
-              border: '1px solid rgba(255,255,255,0.08)', 
-              padding: '1.25rem 1.25rem 1.25rem 3.5rem', 
-              borderRadius: '16px', 
-              color: 'white',
-              fontSize: '1rem',
+            style={{
+              width: '100%',
+              background: 'white',
+              border: '1px solid #e5e7eb',
+              padding: '0.85rem 1rem 0.85rem 2.75rem',
+              borderRadius: '14px',
+              color: '#111827',
+              fontSize: '0.9rem',
               outline: 'none',
-              transition: 'all 0.3s'
-            }} 
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              transition: 'border-color 0.2s, box-shadow 0.2s'
+            }}
+            onFocus={e => { e.target.style.borderColor = '#3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)'; }}
+            onBlur={e => { e.target.style.borderColor = '#e5e7eb'; e.target.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'; }}
           />
         </div>
 
-        <button 
-            onClick={() => onOpenChat()}
-            className="btn-action-pro" 
-            style={{ padding: '1.25rem 2rem', display: 'flex', alignItems: 'center', gap: '12px', background: '#3b82f6', color: 'white', borderRadius: '16px', boxShadow: '0 8px 24px rgba(59, 130, 246, 0.3)' }}
+        <button
+          onClick={() => onOpenChat()}
+          className="btn-primary"
+          style={{ padding: '0.85rem 1.75rem', whiteSpace: 'nowrap' }}
         >
-            <Bot size={20} /> ASK HireAI Intelligence
+          <Bot size={18} /> ASK HireAI Intelligence
         </button>
       </div>
 
-      {/* Header Section */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ padding: '8px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '10px' }}>
-                <History size={20} color="#3b82f6" />
-            </div>
-            <div>
-                <h3 style={{ color: 'white', fontSize: '1.5rem', fontWeight: '800', marginBottom: '2px' }}>Candidate Repository</h3>
-                <p style={{ color: '#64748b', fontSize: '0.85rem' }}>AI-Summarized talent pool index</p>
-            </div>
-            <span style={{ marginLeft: '12px', padding: '6px 12px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', fontSize: '0.75rem', color: '#94a3b8', fontWeight: '700', border: '1px solid rgba(255,255,255,0.08)' }}>{filteredCandidates.length} Candidates</span>
+          <div style={{ padding: '8px', background: 'rgba(59,130,246,0.1)', borderRadius: '10px' }}>
+            <History size={18} color="#3b82f6" />
+          </div>
+          <div>
+            <h3 style={{ color: 'var(--text-primary)', fontSize: '1.3rem', fontWeight: '800', fontFamily: 'Outfit, sans-serif' }}>Candidate Repository</h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>AI-Summarized talent pool index</p>
+          </div>
+          <span style={{ marginLeft: '8px', padding: '4px 12px', background: '#f3f4f6', borderRadius: '8px', fontSize: '0.72rem', color: '#6b7280', fontWeight: '700', border: '1px solid #e5e7eb' }}>
+            {filteredCandidates.length} Candidates
+          </span>
         </div>
-        <button className="btn-action-pro" style={{ background: 'rgba(255,255,255,0.03)', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <Filter size={18} /> Filters
+        <button className="btn-action-pro" style={{ background: 'white', color: '#6b7280', border: '1px solid #e5e7eb' }}>
+          <Filter size={16} /> Filters
         </button>
       </div>
 
       {/* Card Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '2rem' }}>
-        <AnimatePresence mode="popLayout">
-            {filteredCandidates.map(c => (
-              <motion.div 
-                layout
-                key={c.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="glass-card"
-                style={{ 
-                    padding: '1.75rem', 
-                    height: 'auto', 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    gap: '1.5rem',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    position: 'relative',
-                    overflow: 'hidden'
-                }}
-              >
-                {/* Score Badge */}
-                <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(59, 130, 246, 0.1)', padding: '6px 12px', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                    <BadgeCheck size={14} color="#3b82f6" />
-                    <span style={{ fontSize: '0.85rem', fontWeight: '900', color: '#3b82f6' }}>{c.match}%</span>
-                </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.5rem' }}>
+        <AnimatePresence>
+          {filteredCandidates.map((c, i) => (
+            <motion.div
+              layout
+              key={c.id}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.25, delay: i * 0.04 }}
+              className="card"
+              style={{
+                padding: '1.75rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.25rem',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+            >
+              {/* Score Badge */}
+              <div style={{ position: 'absolute', top: '1.25rem', right: '1.25rem', display: 'flex', alignItems: 'center', gap: '5px', background: c.match >= 85 ? 'rgba(16,185,129,0.1)' : 'rgba(59,130,246,0.1)', padding: '5px 11px', borderRadius: '10px', border: `1px solid ${c.match >= 85 ? 'rgba(16,185,129,0.2)' : 'rgba(59,130,246,0.2)'}` }}>
+                <BadgeCheck size={13} color={c.match >= 85 ? '#10b981' : '#3b82f6'} />
+                <span style={{ fontSize: '0.82rem', fontWeight: '900', color: c.match >= 85 ? '#10b981' : '#3b82f6' }}>{c.match}%</span>
+              </div>
 
-                {/* Profile Header */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ width: '56px', height: '56px', background: 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 16px rgba(59, 130, 246, 0.2)' }}>
-                        <User size={28} color="white" />
-                    </div>
-                    <div>
-                        <h4 style={{ color: 'white', fontSize: '1.2rem', fontWeight: '800', marginBottom: '4px' }}>{c.name}</h4>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '0.8rem' }}>
-                            <ArrowUpRight size={14} /> {c.role}
-                        </div>
-                    </div>
+              {/* Profile Header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ width: '52px', height: '52px', background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: '800', fontSize: '1.1rem', fontFamily: 'Outfit, sans-serif', flexShrink: 0 }}>
+                  {c.name[0]}
                 </div>
-
-                {/* Summary Section */}
-                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#3b82f6', fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em' }}>
-                        <FileText size={12} /> AI Abstract
-                    </div>
-                    <p style={{ color: '#cbd5e1', fontSize: '0.9rem', lineHeight: '1.6', opacity: 0.9 }}>
-                        {c.summary}
-                    </p>
+                <div>
+                  <h4 style={{ color: 'var(--text-primary)', fontSize: '1.05rem', fontWeight: '800', marginBottom: '3px', fontFamily: 'Outfit, sans-serif' }}>{c.name}</h4>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#6b7280', fontSize: '0.78rem' }}>
+                    <ArrowUpRight size={13} /> {c.role}
+                  </div>
                 </div>
+              </div>
 
-                {/* Skills Section */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {(c.skills || []).map(skill => (
-                        <span key={skill} style={{ padding: '6px 12px', background: 'rgba(255, 255, 255, 0.05)', color: '#94a3b8', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '600', border: '1px solid rgba(255,255,255,0.08)' }}>
-                            {skill}
-                        </span>
-                    ))}
+              {/* Summary */}
+              <div style={{ background: '#f9fafb', padding: '0.875rem', borderRadius: '10px', border: '1px solid #f3f4f6' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#3b82f6', fontSize: '0.67rem', fontWeight: '800', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.06em' }}>
+                  <FileText size={11} /> AI Abstract
                 </div>
+                <p style={{ color: '#374151', fontSize: '0.85rem', lineHeight: '1.6' }}>{c.summary}</p>
+              </div>
 
-                {/* Footer Metadata */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#64748b', fontSize: '0.75rem' }}>
-                        <Calendar size={14} /> {c.applied}
-                    </div>
-                    
-                    
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                        <button 
-                            onClick={() => setExpandedNotes(prev => ({ ...prev, [c.id]: !prev[c.id] }))}
-                            title="Add/Edit Notes"
-                            style={{ 
-                                background: expandedNotes[c.id] ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.05)', 
-                                color: expandedNotes[c.id] ? '#3b82f6' : '#cbd5e1', 
-                                border: expandedNotes[c.id] ? '1px solid #3b82f6' : '1px solid rgba(255,255,255,0.08)',
-                                width: '40px',
-                                height: '40px',
-                                borderRadius: '10px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                position: 'relative'
-                            }}
-                        >
-                            <StickyNote size={18} />
-                            {c.notes && c.notes.length > 0 && (
-                                <div style={{ 
-                                    position: 'absolute', 
-                                    top: '4px', 
-                                    right: '4px', 
-                                    width: '8px', 
-                                    height: '8px', 
-                                    background: '#3b82f6', 
-                                    borderRadius: '50%', 
-                                    border: '2px solid #0a0f1d' 
-                                }}></div>
-                            )}
-                        </button>
-                        <button 
-                            onClick={() => onOpenChat(c)}
-                            title="Chat with AI"
-                            style={{ 
-                                background: 'rgba(59, 130, 246, 0.1)', 
-                                color: '#3b82f6', 
-                                border: '1px solid rgba(59, 130, 246, 0.2)',
-                                width: '40px',
-                                height: '40px',
-                                borderRadius: '10px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            <MessageSquare size={18} />
-                        </button>
-                        <button 
-                            title="Download Resume"
-                            onClick={() => window.open(`http://localhost:5001/api/candidates/${c.id}/resume`, '_blank')}
-                            style={{ 
-                                background: 'rgba(255, 255, 255, 0.05)', 
-                                color: '#cbd5e1', 
-                                border: '1px solid rgba(255,255,255,0.08)',
-                                width: '40px',
-                                height: '40px',
-                                borderRadius: '10px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            <Download size={18} />
-                        </button>
-                        <button 
-                            title="Remove Record"
-                            onClick={() => handleDelete(c.id)}
-                            style={{ 
-                                background: 'rgba(239, 68, 68, 0.1)', 
-                                color: '#ef4444', 
-                                border: '1px solid rgba(239, 68, 68, 0.2)',
-                                width: '40px',
-                                height: '40px',
-                                borderRadius: '10px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            <Trash2 size={18} />
-                        </button>
-                    </div>
+              {/* Skills */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {c.skills.map(skill => (
+                  <span key={skill} style={{ padding: '4px 10px', background: '#eff6ff', color: '#3b82f6', borderRadius: '7px', fontSize: '0.72rem', fontWeight: '600', border: '1px solid #dbeafe' }}>
+                    {skill}
+                  </span>
+                ))}
+              </div>
+
+              {/* Footer */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '1.25rem', borderTop: '1px solid #f3f4f6' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#9ca3af', fontSize: '0.72rem' }}>
+                  <Calendar size={12} /> Processed {c.applied}
                 </div>
-
-                {/* Notes Section */}
-                <AnimatePresence>
-                  {expandedNotes[c.id] && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      style={{ overflow: 'hidden' }}
-                    >
-                      <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                           <span style={{ fontSize: '0.7rem', fontWeight: '800', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.05em' }}>HR Recruiting Notes</span>
-                           <button 
-                             onClick={() => handleSaveNotes(c.id)}
-                             disabled={isSaving === c.id}
-                             style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: '700' }}
-                           >
-                             {isSaving === c.id ? <Loader2 size={14} className="spin" /> : <Save size={14} />}
-                             {isSaving === c.id ? 'Saving...' : 'Save Notes'}
-                           </button>
-                        </div>
-                        <textarea 
-                          placeholder="Type internal candidate feedback here..."
-                          defaultValue={c.notes || ""}
-                          onChange={(e) => setEditingNotes(prev => ({ ...prev, [c.id]: e.target.value }))}
-                          style={{ 
-                            width: '100%', 
-                            background: 'rgba(0,0,0,0.2)', 
-                            border: '1px solid rgba(255,255,255,0.05)', 
-                            borderRadius: '12px', 
-                            padding: '12px', 
-                            color: 'white', 
-                            fontSize: '0.85rem', 
-                            minHeight: '80px', 
-                            resize: 'vertical',
-                            outline: 'none'
-                          }}
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            ))}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => onOpenChat(c)}
+                    title="Chat with AI"
+                    style={{ background: '#eff6ff', color: '#3b82f6', border: '1px solid #dbeafe', width: '36px', height: '36px', borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
+                  >
+                    <MessageSquare size={16} />
+                  </button>
+                  <button
+                    title="Download Resume"
+                    style={{ background: '#f9fafb', color: '#6b7280', border: '1px solid #e5e7eb', width: '36px', height: '36px', borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                  >
+                    <Download size={16} />
+                  </button>
+                  <button
+                    title="Remove Record"
+                    style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.18)', width: '36px', height: '36px', borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          ))}
         </AnimatePresence>
       </div>
 
       {filteredCandidates.length === 0 && (
-          <div style={{ padding: '8rem 4rem', textAlign: 'center', color: '#64748b', background: 'rgba(255,255,255,0.02)', borderRadius: '24px', border: '1px dotted rgba(255,255,255,0.1)', marginTop: '2rem' }}>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <Search size={48} style={{ opacity: 0.2 }} />
-              </div>
-              <h4 style={{ color: 'white', fontSize: '1.25rem', marginBottom: '0.5rem' }}>No talent matches found</h4>
-              <p>Try adjusting your search terms or filters to find candidates.</p>
+        <div style={{ padding: '6rem 4rem', textAlign: 'center', color: '#9ca3af', background: 'white', borderRadius: '20px', border: '2px dashed #e5e7eb', marginTop: '2rem', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          <div style={{ marginBottom: '1rem' }}>
+            <Search size={44} style={{ opacity: 0.3, color: '#6b7280' }} />
           </div>
+          <h4 style={{ color: '#374151', fontSize: '1.15rem', marginBottom: '0.5rem', fontWeight: '700' }}>No talent matches found</h4>
+          <p style={{ fontSize: '0.9rem' }}>Try adjusting your search terms or filters to find candidates.</p>
+        </div>
       )}
     </div>
   );
