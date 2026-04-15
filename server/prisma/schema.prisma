@@ -50,17 +50,20 @@ model Job {
   notes            String?  @default("")
   createdAt        DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  applications     Application[]
 }
 
 model Application {
   id                Int       @id @default(autoincrement())
   candidateId       Int
   candidate         Candidate @relation(fields: [candidateId], references: [id])
-  matchScore        Int
-  technicalScore    Int
-  domainRelevance   Int
-  strengths         String
-  gaps              String
+  jobId             Int
+  job               Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  matchScore        Int?
+  technicalScore    Int?
+  domainRelevance   Int?
+  strengths         String?
+  gaps              String?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 }

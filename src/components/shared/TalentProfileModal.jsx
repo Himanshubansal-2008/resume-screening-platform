@@ -1,4 +1,5 @@
 import React from 'react';
+import ReactDOM from 'react-dom';
 import { 
   X, 
   Cpu, 
@@ -12,7 +13,8 @@ import {
   User,
   ShieldCheck,
   TrendingUp,
-  Brain
+  Brain,
+  Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -25,7 +27,15 @@ const TalentProfileModal = ({ isOpen, onClose, candidate }) => {
       culturalCalibration: { "Alignment": "Culture-fit assessment pending." }
   };
 
-  return (
+  const handleDownload = () => {
+    if (candidate.file) {
+        window.open(candidate.file, '_blank');
+    } else {
+        alert("No original resume file found in database for this candidate.");
+    }
+  };
+
+  return ReactDOM.createPortal(
     <AnimatePresence>
       {isOpen && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
@@ -57,12 +67,21 @@ const TalentProfileModal = ({ isOpen, onClose, candidate }) => {
           >
             {/* Header / Banner */}
             <div style={{ padding: '3rem', background: 'linear-gradient(to right, hsla(217, 91%, 60%, 0.08), transparent)', borderBottom: '1px solid var(--card-border)', position: 'relative' }}>
-              <button 
-                onClick={onClose}
-                style={{ position: 'absolute', top: '2rem', right: '2rem', background: 'hsla(0,0%,100%,0.05)', border: '1px solid var(--card-border)', color: 'white', padding: '10px', borderRadius: '14px', cursor: 'pointer' }}
-              >
-                <X size={20} />
-              </button>
+              <div style={{ position: 'absolute', top: '2rem', right: '2rem', display: 'flex', gap: '12px' }}>
+                <button 
+                  onClick={handleDownload}
+                  className="btn-action-pro"
+                  style={{ background: 'hsla(0,0%,100%,0.05)', border: '1px solid var(--card-border)', color: 'white', padding: '10px 16px', borderRadius: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: '700' }}
+                >
+                  <Download size={18} /> Resume PDF
+                </button>
+                <button 
+                  onClick={onClose}
+                  style={{ background: 'hsla(0,0%,100%,0.05)', border: '1px solid var(--card-border)', color: 'white', padding: '10px', borderRadius: '14px', cursor: 'pointer' }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
                 <div style={{ width: '100px', height: '100px', background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)', borderRadius: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 30px var(--primary-glow)' }}>
@@ -169,7 +188,8 @@ const TalentProfileModal = ({ isOpen, onClose, candidate }) => {
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
 
