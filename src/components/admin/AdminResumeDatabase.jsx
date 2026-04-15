@@ -13,68 +13,66 @@ import {
   Calendar,
   FileText,
   BadgeCheck,
-  StickyNote,
   Save,
-  ChevronDown,
-  ChevronUp,
-  Loader2
+  StickyNote,
+  ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import NotesModal from '../shared/NotesModal';
+import TalentProfileModal from '../shared/TalentProfileModal';
 
-const AdminResumeDatabase = ({ candidates = [], onOpenChat, onRefresh }) => {
+const AdminResumeDatabase = ({ candidates, onOpenChat, onRefresh }) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [editingNotes, setEditingNotes] = useState({}); // { candidateId: text }
-  const [expandedNotes, setExpandedNotes] = useState({}); // { candidateId: boolean }
-  const [isSaving, setIsSaving] = useState(null); // candidateId
+  const [savingId, setSavingId] = useState(null);
+  const [selectedCandidateForNotes, setSelectedCandidateForNotes] = useState(null);
+  const [selectedCandidateForProfile, setSelectedCandidateForProfile] = useState(null);
 
-  const filteredCandidates = candidates.filter(c => 
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (c.role && c.role.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (c.skills && c.skills.some(s => s.toLowerCase().includes(searchTerm.toLowerCase())))
-  );
-
-  const handleSaveNotes = async (id) => {
-    const noteContent = editingNotes[id] !== undefined ? editingNotes[id] : (candidates.find(c => c.id === id)?.notes || "");
+  const filteredCandidates = (Array.isArray(candidates) ? candidates : []).filter(c => {
+    const name = c?.name || "";
+    const role = c?.role || "";
+    const skills = Array.isArray(c?.skills) ? c.skills : [];
     
-    setIsSaving(id);
+    return name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           role.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           skills.some(s => s.toLowerCase().includes(searchTerm.toLowerCase()));
+  });
+
+  const handleSaveNotes = async (notes) => {
+    if (!selectedCandidateForNotes) return;
+    const id = selectedCandidateForNotes.id;
+    setSavingId(id);
     try {
-        const response = await fetch(`http://localhost:5001/api/candidates/${id}`, {
+        const res = await fetch(`http://localhost:5001/api/candidates/${id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ notes: noteContent })
+            body: JSON.stringify({ notes })
         });
-        if (response.ok) {
-            // Success - update parent if possible
+        if (res.ok) {
             if (onRefresh) onRefresh();
-            setIsSaving(null);
+            setSelectedCandidateForNotes(null);
         }
-    } catch (err) {
-        console.error("Save failed:", err);
-        setIsSaving(null);
+    } catch (error) {
+        console.error("Error saving notes:", error);
+    } finally {
+        setSavingId(null);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this candidate?")) return;
-    try {
-        const response = await fetch(`http://localhost:5001/api/candidates/${id}`, {
-            method: 'DELETE'
-        });
-        if (response.ok) {
-            // Ideally trigger onRefresh here, but for now we rely on the parent's refresh or state sync
-            window.location.reload(); 
-        }
-    } catch (err) {
-        console.error("Delete failed:", err);
+  const handleDownload = (e, candidate) => {
+    e.stopPropagation();
+    if (candidate.file) {
+        window.open(candidate.file, '_blank');
+    } else {
+        alert("No resume file available for this record.");
     }
   };
 
   return (
     <div className="fadeIn">
-      {/* Search and Global Chat Trigger */}
+      {/* Search Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem', gap: '2rem' }}>
         <div style={{ position: 'relative', flex: 1, maxWidth: '600px' }}>
-          <Search style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} size={20} />
+          <Search style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} size={20} />
           <input 
             type="text" 
             placeholder="Search by name, role, or skill..." 
@@ -82,257 +80,131 @@ const AdminResumeDatabase = ({ candidates = [], onOpenChat, onRefresh }) => {
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{ 
               width: '100%', 
-              background: 'rgba(255,255,255,0.03)', 
-              border: '1px solid rgba(255,255,255,0.08)', 
+              background: 'var(--card-bg)', 
+              border: '1px solid var(--card-border)', 
               padding: '1.25rem 1.25rem 1.25rem 3.5rem', 
               borderRadius: '16px', 
               color: 'white',
               fontSize: '1rem',
-              outline: 'none',
-              transition: 'all 0.3s'
+              outline: 'none'
             }} 
           />
         </div>
 
-        <button 
-            onClick={() => onOpenChat()}
-            className="btn-action-pro" 
-            style={{ padding: '1.25rem 2rem', display: 'flex', alignItems: 'center', gap: '12px', background: '#3b82f6', color: 'white', borderRadius: '16px', boxShadow: '0 8px 24px rgba(59, 130, 246, 0.3)' }}
-        >
+        <button onClick={() => onOpenChat()} className="btn-action-pro btn-primary" style={{ padding: '1.25rem 2.5rem' }}>
             <Bot size={20} /> ASK HireAI Intelligence
         </button>
       </div>
 
-      {/* Header Section */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ padding: '8px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '10px' }}>
-                <History size={20} color="#3b82f6" />
-            </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ padding: '10px', background: 'hsla(217, 91%, 60%, 0.1)', borderRadius: '12px', color: 'var(--primary)' }}><History size={20} /></div>
             <div>
-                <h3 style={{ color: 'white', fontSize: '1.5rem', fontWeight: '800', marginBottom: '2px' }}>Candidate Repository</h3>
-                <p style={{ color: '#64748b', fontSize: '0.85rem' }}>AI-Summarized talent pool index</p>
+                <h3 style={{ color: 'white', fontSize: '1.75rem', fontWeight: '800', marginBottom: '2px' }}>Candidate Repository</h3>
+                <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>Comprehensive AI talent database</p>
             </div>
-            <span style={{ marginLeft: '12px', padding: '6px 12px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', fontSize: '0.75rem', color: '#94a3b8', fontWeight: '700', border: '1px solid rgba(255,255,255,0.08)' }}>{filteredCandidates.length} Candidates</span>
+            <span className="pill-capsule" style={{ marginLeft: '12px', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
+                {filteredCandidates.length} Profiles
+            </span>
         </div>
-        <button className="btn-action-pro" style={{ background: 'rgba(255,255,255,0.03)', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <Filter size={18} /> Filters
-        </button>
       </div>
 
-      {/* Card Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '2rem' }}>
+      {/* Repository Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '2.5rem' }}>
         <AnimatePresence mode="popLayout">
             {filteredCandidates.map(c => (
               <motion.div 
                 layout
                 key={c.id}
-                initial={{ opacity: 0, scale: 0.9 }}
+                initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
+                exit={{ opacity: 0, scale: 0.95 }}
                 className="glass-card"
+                onClick={() => setSelectedCandidateForProfile(c)}
                 style={{ 
                     padding: '1.75rem', 
-                    height: 'auto', 
                     display: 'flex', 
                     flexDirection: 'column', 
                     gap: '1.5rem',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    position: 'relative',
-                    overflow: 'hidden'
+                    cursor: 'pointer',
+                    transition: 'all 0.3s',
+                    position: 'relative'
                 }}
               >
-                {/* Score Badge */}
-                <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(59, 130, 246, 0.1)', padding: '6px 12px', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                    <BadgeCheck size={14} color="#3b82f6" />
-                    <span style={{ fontSize: '0.85rem', fontWeight: '900', color: '#3b82f6' }}>{c.match}%</span>
+                <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px', background: 'hsla(217, 91%, 60%, 0.1)', padding: '6px 12px', borderRadius: '12px', border: '1px solid hsla(217, 91%, 60% , 0.2)' }}>
+                    <BadgeCheck size={14} color="var(--primary)" />
+                    <span style={{ fontSize: '0.85rem', fontWeight: '900', color: 'var(--primary)' }}>{c.match}%</span>
                 </div>
 
-                {/* Profile Header */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ width: '56px', height: '56px', background: 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 16px rgba(59, 130, 246, 0.2)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                    <div style={{ width: '56px', height: '56px', background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <User size={28} color="white" />
                     </div>
                     <div>
-                        <h4 style={{ color: 'white', fontSize: '1.2rem', fontWeight: '800', marginBottom: '4px' }}>{c.name}</h4>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '0.8rem' }}>
+                        <h4 style={{ color: 'white', fontSize: '1.25rem', fontWeight: '800', marginBottom: '2px' }}>{c.name}</h4>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-dim)', fontSize: '0.85rem', fontWeight: '600' }}>
                             <ArrowUpRight size={14} /> {c.role}
                         </div>
                     </div>
                 </div>
 
-                {/* Summary Section */}
-                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#3b82f6', fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em' }}>
-                        <FileText size={12} /> AI Abstract
+                {/* Always-visible punchy summary */}
+                <div style={{ background: 'hsla(255, 255%, 255%, 0.02)', padding: '1rem', borderRadius: '14px', border: '1px solid var(--card-border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary)', fontSize: '0.65rem', fontWeight: '900', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.08em' }}>
+                        <FileText size={14} /> AI SNAPSHOT
                     </div>
-                    <p style={{ color: '#cbd5e1', fontSize: '0.9rem', lineHeight: '1.6', opacity: 0.9 }}>
+                    <p style={{ 
+                        color: 'var(--text-dim)', 
+                        fontSize: '0.9rem', 
+                        lineHeight: '1.5',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                    }}>
                         {c.summary}
                     </p>
                 </div>
 
-                {/* Skills Section */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {(c.skills || []).map(skill => (
-                        <span key={skill} style={{ padding: '6px 12px', background: 'rgba(255, 255, 255, 0.05)', color: '#94a3b8', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '600', border: '1px solid rgba(255,255,255,0.08)' }}>
-                            {skill}
-                        </span>
-                    ))}
-                </div>
-
-                {/* Footer Metadata */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#64748b', fontSize: '0.75rem' }}>
-                        <Calendar size={14} /> {c.applied}
-                    </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '1.25rem', borderTop: '1px solid var(--card-border)' }}>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: '600' }}>{c.applied}</div>
                     
-                    
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                        <button 
-                            onClick={() => setExpandedNotes(prev => ({ ...prev, [c.id]: !prev[c.id] }))}
-                            title="Add/Edit Notes"
-                            style={{ 
-                                background: expandedNotes[c.id] ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.05)', 
-                                color: expandedNotes[c.id] ? '#3b82f6' : '#cbd5e1', 
-                                border: expandedNotes[c.id] ? '1px solid #3b82f6' : '1px solid rgba(255,255,255,0.08)',
-                                width: '40px',
-                                height: '40px',
-                                borderRadius: '10px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                position: 'relative'
-                            }}
-                        >
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={(e) => { e.stopPropagation(); setSelectedCandidateForNotes(c); }} className="btn-action-pro btn-ghost" style={{ width: '38px', height: '38px', padding: 0, position: 'relative' }}>
                             <StickyNote size={18} />
-                            {c.notes && c.notes.length > 0 && (
-                                <div style={{ 
-                                    position: 'absolute', 
-                                    top: '4px', 
-                                    right: '4px', 
-                                    width: '8px', 
-                                    height: '8px', 
-                                    background: '#3b82f6', 
-                                    borderRadius: '50%', 
-                                    border: '2px solid #0a0f1d' 
-                                }}></div>
+                            {c.notes && c.notes.trim() !== "" && (
+                                <span className="pulse" style={{ position: 'absolute', top: '7px', right: '7px', width: '6px', height: '6px', background: 'var(--primary)', borderRadius: '50%' }}></span>
                             )}
                         </button>
-                        <button 
-                            onClick={() => onOpenChat(c)}
-                            title="Chat with AI"
-                            style={{ 
-                                background: 'rgba(59, 130, 246, 0.1)', 
-                                color: '#3b82f6', 
-                                border: '1px solid rgba(59, 130, 246, 0.2)',
-                                width: '40px',
-                                height: '40px',
-                                borderRadius: '10px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer'
-                            }}
-                        >
+                        <button onClick={(e) => { e.stopPropagation(); onOpenChat(c); }} className="btn-action-pro btn-ghost" style={{ width: '38px', height: '38px', padding: 0 }}>
                             <MessageSquare size={18} />
                         </button>
-                        <button 
-                            title="Download Resume"
-                            onClick={() => window.open(`http://localhost:5001/api/candidates/${c.id}/resume`, '_blank')}
-                            style={{ 
-                                background: 'rgba(255, 255, 255, 0.05)', 
-                                color: '#cbd5e1', 
-                                border: '1px solid rgba(255,255,255,0.08)',
-                                width: '40px',
-                                height: '40px',
-                                borderRadius: '10px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer'
-                            }}
-                        >
+                        <button onClick={(e) => handleDownload(e, c)} className="btn-action-pro btn-ghost" style={{ width: '38px', height: '38px', padding: 0 }}>
                             <Download size={18} />
                         </button>
-                        <button 
-                            title="Remove Record"
-                            onClick={() => handleDelete(c.id)}
-                            style={{ 
-                                background: 'rgba(239, 68, 68, 0.1)', 
-                                color: '#ef4444', 
-                                border: '1px solid rgba(239, 68, 68, 0.2)',
-                                width: '40px',
-                                height: '40px',
-                                borderRadius: '10px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            <Trash2 size={18} />
-                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); }} className="btn-action-pro" style={{ width: '38px', height: '38px', padding: 0, background: 'hsla(0, 85%, 60%, 0.1)', color: 'var(--danger)', border: '1px solid hsla(0, 85%, 60%, 0.1)' }}><Trash2 size={18} /></button>
                     </div>
                 </div>
-
-                {/* Notes Section */}
-                <AnimatePresence>
-                  {expandedNotes[c.id] && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      style={{ overflow: 'hidden' }}
-                    >
-                      <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                           <span style={{ fontSize: '0.7rem', fontWeight: '800', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.05em' }}>HR Recruiting Notes</span>
-                           <button 
-                             onClick={() => handleSaveNotes(c.id)}
-                             disabled={isSaving === c.id}
-                             style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: '700' }}
-                           >
-                             {isSaving === c.id ? <Loader2 size={14} className="spin" /> : <Save size={14} />}
-                             {isSaving === c.id ? 'Saving...' : 'Save Notes'}
-                           </button>
-                        </div>
-                        <textarea 
-                          placeholder="Type internal candidate feedback here..."
-                          defaultValue={c.notes || ""}
-                          onChange={(e) => setEditingNotes(prev => ({ ...prev, [c.id]: e.target.value }))}
-                          style={{ 
-                            width: '100%', 
-                            background: 'rgba(0,0,0,0.2)', 
-                            border: '1px solid rgba(255,255,255,0.05)', 
-                            borderRadius: '12px', 
-                            padding: '12px', 
-                            color: 'white', 
-                            fontSize: '0.85rem', 
-                            minHeight: '80px', 
-                            resize: 'vertical',
-                            outline: 'none'
-                          }}
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </motion.div>
             ))}
         </AnimatePresence>
       </div>
 
-      {filteredCandidates.length === 0 && (
-          <div style={{ padding: '8rem 4rem', textAlign: 'center', color: '#64748b', background: 'rgba(255,255,255,0.02)', borderRadius: '24px', border: '1px dotted rgba(255,255,255,0.1)', marginTop: '2rem' }}>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <Search size={48} style={{ opacity: 0.2 }} />
-              </div>
-              <h4 style={{ color: 'white', fontSize: '1.25rem', marginBottom: '0.5rem' }}>No talent matches found</h4>
-              <p>Try adjusting your search terms or filters to find candidates.</p>
-          </div>
-      )}
+      {/* Global Modals */}
+      <NotesModal 
+        isOpen={!!selectedCandidateForNotes}
+        onClose={() => setSelectedCandidateForNotes(null)}
+        onSave={handleSaveNotes}
+        initialValue={selectedCandidateForNotes?.notes || ""}
+        title={`Notes for ${selectedCandidateForNotes?.name}`}
+        isSaving={savingId === selectedCandidateForNotes?.id}
+      />
+
+      <TalentProfileModal 
+        isOpen={!!selectedCandidateForProfile}
+        onClose={() => setSelectedCandidateForProfile(null)}
+        candidate={selectedCandidateForProfile}
+      />
     </div>
   );
 };
