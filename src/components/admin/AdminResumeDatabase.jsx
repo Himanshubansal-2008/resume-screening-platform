@@ -164,7 +164,6 @@ const AdminResumeDatabase = ({ candidates, onOpenChat, onRefresh }) => {
                         {c.summary}
                     </p>
                 </div>
-              </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '1.25rem', borderTop: '1px solid var(--card-border)' }}>
                     <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: '600' }}>{c.applied}</div>
