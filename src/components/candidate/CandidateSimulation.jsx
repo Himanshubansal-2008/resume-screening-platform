@@ -75,17 +75,18 @@ const CandidateSimulation = ({ setActiveTab }) => {
   if (callState === 'lobby') {
       return (
           <div className="fadeIn" style={{ height: 'calc(100vh - 150px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-             <div style={{ background: 'rgba(255,255,255,0.02)', padding: '4rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center', maxWidth: '500px' }}>
-                <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '24px', borderRadius: '50%', display: 'inline-flex', marginBottom: '2rem' }}>
-                    <Bot size={48} color="#3b82f6" />
+             <div className="card" style={{ padding: '3.5rem', borderRadius: '24px', textAlign: 'center', maxWidth: '500px', width: '100%' }}>
+                <div style={{ background: '#eff6ff', padding: '24px', borderRadius: '50%', display: 'inline-flex', marginBottom: '2rem' }}>
+                    <Bot size={44} color="#3b82f6" />
                 </div>
-                <h2 style={{ color: 'white', fontSize: '2rem', fontWeight: '800', marginBottom: '1rem' }}>Voice AI Simulation</h2>
-                <p style={{ color: '#94a3b8', lineHeight: '1.6', marginBottom: '3rem' }}>
+                <h2 style={{ color: 'var(--text-primary)', fontSize: '1.75rem', fontWeight: '800', marginBottom: '0.75rem', fontFamily: 'Outfit, sans-serif' }}>Voice AI Simulation</h2>
+                <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '2.5rem', fontSize: '0.93rem' }}>
                     You are about to start a voice-to-voice mock interview with HireAI. Please ensure you are in a quiet environment.
                 </p>
                 <button 
                   onClick={joinCall}
-                  style={{ width: '100%', padding: '1.25rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '16px', fontSize: '1.1rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 24px rgba(59, 130, 246, 0.4)', transition: 'all 0.2s' }}
+                  className="btn-primary"
+                  style={{ width: '100%', justifyContent: 'center', padding: '1.1rem', fontSize: '1rem' }}
                 >
                     Start Simulation
                 </button>
@@ -97,10 +98,13 @@ const CandidateSimulation = ({ setActiveTab }) => {
   if (callState === 'ended') {
     return (
         <div className="fadeIn" style={{ height: 'calc(100vh - 150px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-           <div style={{ textAlign: 'center' }}>
-               <h2 style={{ color: 'white', fontSize: '2rem', fontWeight: '800', marginBottom: '1rem' }}>Interview Completed</h2>
-               <p style={{ color: '#94a3b8', marginBottom: '2rem' }}>Your responses are being analyzed.</p>
-               <button onClick={() => setActiveTab('dashboard')} className="btn-action-pro">Return to Dashboard</button>
+           <div className="card" style={{ textAlign: 'center', padding: '3.5rem', maxWidth: '450px', width: '100%' }}>
+               <div style={{ background: '#dcfce7', padding: '20px', borderRadius: '50%', display: 'inline-flex', marginBottom: '1.5rem' }}>
+                   <Activity size={40} color="#10b981" />
+               </div>
+               <h2 style={{ color: 'var(--text-primary)', fontSize: '1.75rem', fontWeight: '800', marginBottom: '0.75rem', fontFamily: 'Outfit, sans-serif' }}>Interview Completed</h2>
+               <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '0.9rem' }}>Your responses are being analyzed by HireAI.</p>
+               <button onClick={() => setActiveTab('dashboard')} className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '0.9rem' }}>Return to Dashboard</button>
            </div>
         </div>
     );
@@ -148,11 +152,11 @@ const CandidateSimulation = ({ setActiveTab }) => {
                 </div>
 
                 {/* Status / Log box */}
-                <div style={{ flex: 1, background: 'rgba(255,255,255,0.02)', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)', padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
-                     <h4 style={{ color: 'white', fontSize: '0.9rem', marginBottom: '1rem' }}>Real-time Transcript</h4>
-                     <div style={{ flex: 1, color: '#94a3b8', fontSize: '0.85rem', lineHeight: '1.6' }}>
+                <div style={{ flex: 1, background: 'white', borderRadius: '24px', border: '1px solid #e5e7eb', padding: '1.5rem', display: 'flex', flexDirection: 'column', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                     <h4 style={{ color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: '700', marginBottom: '1rem' }}>Real-time Transcript</h4>
+                     <div style={{ flex: 1, color: '#6b7280', fontSize: '0.85rem', lineHeight: '1.6' }}>
                         {aiSpeaking ? (
-                            <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }}>"Hello, thank you for joining. Let's begin the technical assessment..."</motion.span>
+                            <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ color: '#374151' }}>"Hello, thank you for joining. Let's begin the technical assessment..."</motion.span>
                         ) : (
                             <span style={{ opacity: 0.5 }}>Waiting for speech...</span>
                         )}
