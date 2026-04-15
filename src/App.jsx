@@ -116,7 +116,7 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
             ) : (
                activeTab === 'dashboard' ? <CandidateHome user={user} candidates={candidates} myProfile={myProfile} recommendations={recommendations} /> : 
                activeTab === 'submit' ? <CandidateSubmit onRefresh={onRefresh} setActiveTab={setActiveTab} /> :
-               activeTab === 'jobboard' ? <CandidateJobBoard user={user} allJobs={jobs} recommendations={recommendations} /> :
+               activeTab === 'jobboard' ? <CandidateJobBoard user={user} allJobs={jobs} myProfile={myProfile} onRefresh={onRefresh} recommendations={recommendations} setActiveTab={setActiveTab} /> :
                <CandidatePrepHub />
             )}
           </motion.div>
@@ -152,8 +152,8 @@ const App = () => {
       ]);
       const candData = await candRes.json();
       const jobsData = await jobsRes.json();
-      setCandidates(candData);
-      setJobs(jobsData);
+      setCandidates(Array.isArray(candData) ? candData : []);
+      setJobs(Array.isArray(jobsData) ? jobsData : []);
 
       // Fetch recommendations only for candidates
       if (!isAdmin) {

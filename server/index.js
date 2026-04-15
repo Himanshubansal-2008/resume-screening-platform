@@ -6,6 +6,7 @@ const prisma = require('./lib/prisma');
 const multer = require('multer');
 const pdf = require('pdf-parse');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Groq = require('groq-sdk');
 const upload = multer();
 
 const app = express();
@@ -17,19 +18,108 @@ app.use(express.json());
 // --- UTILITIES ---
 function cleanJsonResponse(text) {
     try {
-        // Robust cleaning: remove markdown blocks (```json ... ```)
         const regex = /```(?:json)?\s*([\s\S]*?)\s*```/g;
         const match = regex.exec(text);
         const jsonPart = match ? match[1] : text;
         return JSON.parse(jsonPart.trim());
     } catch (e) {
-        console.error("[Hardening] Raw LLM Response:", text);
+        // Try to find any JSON object in the text
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            try { return JSON.parse(jsonMatch[0]); } catch {}
+        }
         throw new Error("Neural output was malformed. Please try again.");
     }
 }
 
-// --- ROTATING GEMINI INTELLIGENCE ---
-class GeminiManager {
+// --- REGEX FALLBACK EXTRACTOR (no API needed) ---
+function regexExtractJD(text) {
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    
+    const getSection = (heading) => {
+        const idx = lines.findIndex(l => l.toLowerCase().includes(heading.toLowerCase()));
+        if (idx === -1) return '';
+        const end = lines.findIndex((l, i) => i > idx && /^[A-Z][^a-z]{2,}/.test(l) && l.length < 60);
+        return lines.slice(idx + 1, end === -1 ? idx + 15 : end).join('\n');
+    };
+
+    const titleMatch = text.match(/(?:position|role|job title)[:\s]+([^\n]+)/i) || [null, lines[0]];
+    const locationMatch = text.match(/(?:location)[:\s]+([^\n]+)/i);
+    const typeMatch = text.match(/(?:job type|employment type)[:\s]+([^\n]+)/i);
+    const skills = [...new Set(
+        (text.match(/\b(Python|JavaScript|TypeScript|React|Node\.js|Java|C\+\+|SQL|Docker|Kubernetes|AWS|GCP|Azure|TensorFlow|PyTorch|MongoDB|PostgreSQL|Redis|GraphQL|REST|Git|Linux|ESP32|Raspberry Pi|Ollama|Kubernetes)\b/g) || [])
+    )];
+
+    return {
+        title: titleMatch[1]?.trim() || 'Job Opening',
+        department: text.match(/(?:department|team)[:\s]+([^\n]+)/i)?.[1]?.trim() || 'General',
+        location: locationMatch?.[1]?.trim() || 'Not specified',
+        type: typeMatch?.[1]?.trim() || 'Full-Time',
+        skills: skills.slice(0, 12),
+        description: getSection('about') || getSection('overview') || lines.slice(0, 5).join(' '),
+        responsibilities: getSection('responsibilities') || getSection('duties'),
+        requirements: getSection('requirements') || getSection('qualifications'),
+        bonusPoints: getSection('bonus') || getSection('nice to have') || getSection('preferred'),
+        benefits: getSection('benefits') || getSection('perks') || getSection('compensation'),
+        interviewProcess: getSection('interview') || getSection('hiring process') || '',
+        culture: getSection('culture') || getSection('about us') || getSection('company'),
+        _provider: 'regex-fallback'
+    };
+}
+
+function regexExtractResume(text, role) {
+    const skills = [...new Set(
+        (text.match(/\b(Python|JavaScript|TypeScript|React|Node\.js|Java|C\+\+|SQL|Docker|Kubernetes|AWS|GCP|Azure|TensorFlow|PyTorch|MongoDB|PostgreSQL|Redis|GraphQL|REST|Git|Linux|Rust|Go|Ruby|Swift|Kotlin|Flutter|FastAPI|Django|Spring)\b/g) || [])
+    )];
+    const score = Math.min(95, 40 + skills.length * 4 + (text.length > 2000 ? 15 : 0));
+    return {
+        score,
+        skills: skills.slice(0, 10),
+        summary: `This candidate demonstrates ${skills.length > 5 ? 'strong' : 'moderate'} technical alignment with the ${role} role, possessing ${skills.slice(0, 3).join(', ')} expertise.\n\nTheir profile shows ${text.length > 2000 ? 'comprehensive' : 'concise'} experience documentation with ${skills.length} identified technical competencies.`,
+        detailedAnalysis: {
+            technicalDeepDive: { skills, count: skills.length },
+            experienceArchitecture: { score },
+            culturalCalibration: { score: 70 }
+        },
+        reason: `Matched ${skills.length} technical skills for ${role}.`,
+        _provider: 'regex-fallback'
+    };
+}
+
+// --- GROQ PROVIDER ---
+class GroqProvider {
+    constructor() {
+        this.groq = process.env.GROQ_API_KEY ? new Groq({ apiKey: process.env.GROQ_API_KEY }) : null;
+    }
+
+    async call(prompt) {
+        if (!this.groq) throw new Error("No Groq API key configured");
+        const completion = await this.groq.chat.completions.create({
+            model: "llama-3.3-70b-versatile",
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.1,
+            max_tokens: 4000
+        });
+        return completion.choices[0]?.message?.content || '';
+    }
+
+    async analyzeResume(text, role) {
+        const prompt = `Analyze this resume for the role of ${role}. Resume: ${text.slice(0, 6000)}
+Return ONLY valid JSON, no markdown:
+{"score":number,"skills":[],"summary":"two paragraphs","detailedAnalysis":{"technicalDeepDive":{},"experienceArchitecture":{},"culturalCalibration":{}},"reason":"short string"}`;
+        return cleanJsonResponse(await this.call(prompt));
+    }
+
+    async extractJD(text) {
+        const prompt = `Extract all job details from this job description. Text: ${text.slice(0, 6000)}
+Return ONLY valid JSON, no markdown:
+{"title":"","department":"","location":"","type":"","skills":[],"description":"","responsibilities":"","requirements":"","bonusPoints":"","benefits":"","interviewProcess":"","culture":""}`;
+        return cleanJsonResponse(await this.call(prompt));
+    }
+}
+
+// --- GEMINI PROVIDER ---
+class GeminiProvider {
     constructor() {
         const keys = process.env.GEMINI_API_KEYS ? process.env.GEMINI_API_KEYS.split(',') : [];
         this.genAIs = keys.map(k => new GoogleGenerativeAI(k.trim()));
@@ -45,57 +135,82 @@ class GeminiManager {
 
     async analyzeResume(text, role) {
         const model = this.getModel();
-        const prompt = `
-            Analyze this candidate's resume for the role of ${role}.
-            Resume Text: ${text}
-
-            Return a valid JSON object WITH NO MARKDOWN BLOCKS. EXACTLY THIS FORMAT:
-            {
-                "score": number (0-100),
-                "skills": string[],
-                "summary": "Exactly two paragraphs of professional feedback.",
-                "detailedAnalysis": {
-                    "technicalDeepDive": object,
-                    "experienceArchitecture": object,
-                    "culturalCalibration": object
-                },
-                "reason": "Short summary of why they match."
-            }
-        `;
+        const prompt = `Analyze this candidate's resume for the role of ${role}.
+Resume Text: ${text.slice(0, 8000)}
+Return a valid JSON object WITH NO MARKDOWN BLOCKS:
+{"score":number(0-100),"skills":[],"summary":"Exactly two paragraphs.","detailedAnalysis":{"technicalDeepDive":{},"experienceArchitecture":{},"culturalCalibration":{}},"reason":"short summary"}`;
         const result = await model.generateContent(prompt);
-        const response = await result.response;
-        return cleanJsonResponse(response.text());
+        return cleanJsonResponse(result.response.text());
     }
 
     async extractJD(text) {
         const model = this.getModel();
-        const prompt = `
-            You are a professional HR system. Extract ALL structural job details from this job description text.
-            Text: ${text}
-
-            Return a valid JSON object with NO MARKDOWN BLOCKS. Capture every section you find. EXACTLY THIS FORMAT:
-            {
-                "title": "Job title (string)",
-                "department": "Department name (string)",
-                "location": "Location including city, country, remote/hybrid (string)",
-                "type": "Job type e.g. Full-Time, Internship, Part-Time (string)",
-                "skills": ["Array of required technical skills"],
-                "description": "Full 'About the Role' or intro paragraph as-is",
-                "responsibilities": "All bullet points from 'Key Responsibilities' section, formatted as a numbered or bulleted list",
-                "requirements": "All bullet points from 'Requirements & Qualifications' section, formatted as a list",
-                "bonusPoints": "All bullet points from 'Bonus Points' or 'Nice to have' section. Empty string if not found.",
-                "benefits": "Company perks, stipend, salary, compensation mentioned",
-                "interviewProcess": "Interview stages or hiring process if mentioned. Empty string if not found.",
-                "culture": "Team culture, company mission, or 'About the Company' snippet"
-            }
-        `;
+        const prompt = `You are a professional HR system. Extract ALL structural job details from this text.
+Text: ${text.slice(0, 8000)}
+Return valid JSON with NO MARKDOWN BLOCKS:
+{"title":"","department":"","location":"","type":"","skills":[],"description":"","responsibilities":"","requirements":"","bonusPoints":"","benefits":"","interviewProcess":"","culture":""}`;
         const result = await model.generateContent(prompt);
-        const response = await result.response;
-        return cleanJsonResponse(response.text());
+        return cleanJsonResponse(result.response.text());
     }
 }
 
-const gemini = new GeminiManager();
+// --- UNIVERSAL AI ENGINE (Cascade: Gemini → Groq → Regex) ---
+const geminiProvider = new GeminiProvider();
+const groqProvider = new GroqProvider();
+
+const universalAI = {
+    async analyzeResume(text, role) {
+        // Try Gemini first
+        try {
+            console.log('[AI] Trying Gemini...');
+            const result = await geminiProvider.analyzeResume(text, role);
+            console.log('[AI] ✓ Gemini succeeded');
+            return { ...result, _provider: 'gemini' };
+        } catch (e) {
+            console.warn('[AI] Gemini failed:', e.message.slice(0, 80));
+        }
+
+        // Fallback: Groq
+        try {
+            console.log('[AI] Trying Groq (Llama-3.3)...');
+            const result = await groqProvider.analyzeResume(text, role);
+            console.log('[AI] ✓ Groq succeeded');
+            return { ...result, _provider: 'groq' };
+        } catch (e) {
+            console.warn('[AI] Groq failed:', e.message.slice(0, 80));
+        }
+
+        // Final fallback: Regex
+        console.log('[AI] Using regex fallback extractor...');
+        return regexExtractResume(text, role);
+    },
+
+    async extractJD(text) {
+        // Try Gemini first
+        try {
+            console.log('[AI] Trying Gemini for JD...');
+            const result = await geminiProvider.extractJD(text);
+            console.log('[AI] ✓ Gemini JD succeeded');
+            return { ...result, _provider: 'gemini' };
+        } catch (e) {
+            console.warn('[AI] Gemini JD failed:', e.message.slice(0, 80));
+        }
+
+        // Fallback: Groq
+        try {
+            console.log('[AI] Trying Groq for JD...');
+            const result = await groqProvider.extractJD(text);
+            console.log('[AI] ✓ Groq JD succeeded');
+            return { ...result, _provider: 'groq' };
+        } catch (e) {
+            console.warn('[AI] Groq JD failed:', e.message.slice(0, 80));
+        }
+
+        // Final fallback: Regex
+        console.log('[AI] Using regex fallback for JD...');
+        return regexExtractJD(text);
+    }
+};
 
 // Health Check
 app.get('/', (req, res) => {
@@ -105,7 +220,10 @@ app.get('/', (req, res) => {
 // 1. Candidate List
 app.get('/api/candidates', async (req, res) => {
     try {
-        const candidates = await prisma.candidate.findMany({ orderBy: { match: 'desc' } });
+        const candidates = await prisma.candidate.findMany({ 
+            orderBy: { match: 'desc' },
+            include: { applications: true }
+        });
         res.json(candidates);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -115,8 +233,49 @@ app.get('/api/candidates', async (req, res) => {
 // 2. Active Jobs List
 app.get('/api/jobs', async (req, res) => {
     try {
-        const jobs = await prisma.job.findMany({ orderBy: { createdAt: 'desc' } });
+        const jobs = await prisma.job.findMany({ 
+            orderBy: { createdAt: 'desc' },
+            include: { applications: { include: { candidate: true } } }
+        });
         res.json(jobs);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 2.5 Applications
+app.post('/api/applications', async (req, res) => {
+    try {
+        const { candidateEmail, jobId } = req.body;
+        const candidate = await prisma.candidate.findUnique({ where: { email: candidateEmail } });
+        if (!candidate) return res.status(404).json({ error: 'Candidate not found' });
+
+        const application = await prisma.application.create({
+            data: {
+                candidateId: candidate.id,
+                jobId: parseInt(jobId),
+            }
+        });
+        res.json(application);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/api/applications/:candidateEmail/:jobId', async (req, res) => {
+    try {
+        const { candidateEmail, jobId } = req.params;
+        const candidate = await prisma.candidate.findUnique({ where: { email: candidateEmail } });
+        if (!candidate) return res.status(404).json({ error: 'Candidate not found' });
+
+        const applications = await prisma.application.findMany({
+            where: { candidateId: candidate.id, jobId: parseInt(jobId) }
+        });
+
+        if (applications.length > 0) {
+            await prisma.application.delete({ where: { id: applications[0].id } });
+        }
+        res.json({ message: "Application cancelled" });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -135,7 +294,8 @@ app.post('/api/candidates', upload.single('resumePdf'), async (req, res) => {
         }
 
         console.log(`[Neural Engine] Analyzing resume for ${email}...`);
-        const ai = await gemini.analyzeResume(extractedText, role || "Software Engineer");
+        const ai = await universalAI.analyzeResume(extractedText, role || "Software Engineer");
+        console.log(`[Neural Engine] Analysis complete via ${ai._provider}`);
 
         const candidate = await prisma.candidate.upsert({
             where: { email },
@@ -175,7 +335,8 @@ app.post('/api/jobs/upload', upload.single('jdPdf'), async (req, res) => {
 
         console.log(`[Neural Engine] Extracting JD structural data...`);
         const pdfData = await pdf(req.file.buffer);
-        const data = await gemini.extractJD(pdfData.text);
+        const data = await universalAI.extractJD(pdfData.text);
+        console.log(`[Neural Engine] JD extraction complete via ${data._provider}`);
         
         res.json(data);
     } catch (err) {
@@ -187,9 +348,22 @@ app.post('/api/jobs/upload', upload.single('jdPdf'), async (req, res) => {
 // 4.1 Create Job
 app.post('/api/jobs', async (req, res) => {
     try {
+        const { title, department, location, type, salary, description, skills, benefits, interviewProcess, culture, responsibilities, requirements, bonusPoints } = req.body;
         const job = await prisma.job.create({
             data: {
-                ...req.body,
+                title: title || 'Untitled Position',
+                department: department || 'General',
+                location: location || 'Remote',
+                type: type || 'Full-Time',
+                salary: salary || 'Competitive',
+                description: description || '',
+                skills: skills || [],
+                benefits: benefits || null,
+                interviewProcess: interviewProcess || null,
+                culture: culture || null,
+                responsibilities: responsibilities || null,
+                requirements: requirements || null,
+                bonusPoints: bonusPoints || null,
                 status: 'Active',
                 posted: 'Just now',
                 applicants: 0
@@ -197,6 +371,7 @@ app.post('/api/jobs', async (req, res) => {
         });
         res.json(job);
     } catch (error) {
+        console.error('[Create Job Error]:', error.message);
         res.status(500).json({ error: error.message });
     }
 });

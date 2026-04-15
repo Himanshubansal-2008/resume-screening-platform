@@ -20,11 +20,30 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import LiveKeywordStream from '../shared/LiveKeywordStream';
-import NotesModal from '../shared/NotesModal';
+import TalentProfileModal from '../shared/TalentProfileModal';
+
+const formatTimeAgo = (dateString) => {
+    if (!dateString) return 'recently';
+    const date = new Date(dateString);
+    const seconds = Math.floor((new Date() - date) / 1000);
+    
+    let interval = seconds / 31536000;
+    if (interval > 1) return Math.floor(interval) + ' years ago';
+    interval = seconds / 2592000;
+    if (interval > 1) return Math.floor(interval) + ' months ago';
+    interval = seconds / 86400;
+    if (interval > 1) return Math.floor(interval) + ' days ago';
+    interval = seconds / 3600;
+    if (interval > 1) return Math.floor(interval) + ' hours ago';
+    interval = seconds / 60;
+    if (interval > 1) return Math.floor(interval) + ' mins ago';
+    return 'just now';
+};
 
 const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
   const [jobs, setJobs] = useState(initialJobs);
   const [expandedId, setExpandedId] = useState(null);
+  const [selectedCandidateForProfile, setSelectedCandidateForProfile] = useState(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
   const [showSuccessPulse, setShowSuccessPulse] = useState(false);
@@ -32,7 +51,8 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
     title: '', 
     department: '', 
     location: '', 
-    type: 'Full-Time', 
+    type: 'Full-Time',
+    salary: '',
     description: '', 
     skills: '',
     benefits: '',
@@ -43,6 +63,7 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
     bonusPoints: ''
   });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [keywords, setKeywords] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
   const fileInputRef = useRef(null);
@@ -83,11 +104,14 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
           setShowSuccessPulse(false);
           setIsAnalyzing(false);
           setKeywords(data.skills || []);
+          // Try to extract salary from benefits text
+          const salaryMatch = (data.benefits || '').match(/(?:₹|\$|USD|INR|LPA|lpa)?\s*[\d,]+\s*(?:k|K|L|lakh|lakhs)?(?:\s*[-–]\s*(?:₹|\$)?\s*[\d,]+\s*(?:k|K|L|lakh|lakhs)?)?\s*(?:per year|per month|per annum|PA|CTC|p\.a\.)?/i);
           setNewJob({
               title: data.title || '',
               department: data.department || '',
               location: data.location || '',
               type: data.type || 'Full-Time',
+              salary: salaryMatch ? salaryMatch[0].trim() : '',
               description: data.description || '',
               skills: Array.isArray(data.skills) ? data.skills.join('\n') : '',
               benefits: data.benefits || '',
@@ -130,7 +154,7 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
       const payload = {
         ...newJob,
         skills: newJob.skills.split('\n').filter(s => s.trim() !== ''),
-        salary: "$120k - $180k",
+        salary: newJob.salary || 'Competitive',
       };
       const res = await fetch('http://localhost:5001/api/jobs', {
         method: 'POST',
@@ -140,11 +164,17 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
       
       if (res.ok) {
         setShowCreateForm(false);
-        setNewJob({ title: '', department: '', location: '', type: 'Full-Time', description: '', skills: '', benefits: '', interviewProcess: '', culture: '' });
+        setNewJob({ title: '', department: '', location: '', type: 'Full-Time', salary: '', description: '', skills: '', benefits: '', interviewProcess: '', culture: '', responsibilities: '', requirements: '', bonusPoints: '' });
         if (onRefresh) onRefresh();
+      } else {
+        const err = await res.json();
+        alert(`Failed to save: ${err.error || 'Unknown error'}`);
       }
     } catch (err) {
       console.error("Create failed:", err);
+      alert(`Network error: ${err.message}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -236,8 +266,8 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
       {/* Creation Modal */}
       <AnimatePresence>
         {showCreateForm && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-overlay">
-            <motion.div initial={{ scale: 0.95, y: 30 }} animate={{ scale: 1, y: 0 }} className="glass-card" style={{ width: '960px', padding: '4rem', position: 'relative', border: '1px solid var(--primary-glow)' }}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-overlay" style={{ alignItems: 'flex-start', paddingTop: '2rem', paddingBottom: '2rem' }}>
+            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} className="glass-card" style={{ width: 'min(960px, 95vw)', maxHeight: '90vh', overflowY: 'auto', padding: '3rem', position: 'relative', border: '1px solid var(--primary-glow)' }}>
               <button onClick={() => setShowCreateForm(false)} style={{ position: 'absolute', top: '2.5rem', right: '2.5rem', background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer' }}><X size={28} /></button>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '3.5rem' }}>
@@ -249,7 +279,8 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
               </div>
 
               <form onSubmit={handleCreate}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '2.5rem' }}>
+                {/* Row 1: Title, Department, Location */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '2rem' }}>
                     <div className="input-group">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                             <label className="label-pro">Job Title</label>
@@ -264,6 +295,32 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
                     <div className="input-group">
                         <label className="label-pro">Location</label>
                         <input type="text" value={newJob.location} onChange={(e) => setNewJob({...newJob, location: e.target.value})} style={inputStyle} required />
+                    </div>
+                </div>
+
+                {/* Row 2: Salary + Job Type */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
+                    <div className="input-group">
+                        <label className="label-pro" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <DollarSign size={14} /> Salary / Compensation
+                        </label>
+                        <input
+                            type="text"
+                            placeholder="e.g. $80k–$120k, ₹15 LPA, Competitive"
+                            value={newJob.salary}
+                            onChange={(e) => setNewJob({...newJob, salary: e.target.value})}
+                            style={inputStyle}
+                        />
+                    </div>
+                    <div className="input-group">
+                        <label className="label-pro">Job Type</label>
+                        <select value={newJob.type} onChange={(e) => setNewJob({...newJob, type: e.target.value})} style={{...inputStyle, cursor: 'pointer'}}>
+                            <option value="Full-Time">Full-Time</option>
+                            <option value="Part-Time">Part-Time</option>
+                            <option value="Internship">Internship</option>
+                            <option value="Contract">Contract</option>
+                            <option value="Freelance">Freelance</option>
+                        </select>
                     </div>
                 </div>
 
@@ -294,8 +351,10 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
                 </div>
 
                 <div style={{ display: 'flex', gap: '1.5rem', justifyContent: 'flex-end' }}>
-                    <button type="button" onClick={() => setShowCreateForm(false)} className="btn-action-pro" style={{ padding: '1.15rem 3.5rem' }}>Cancel</button>
-                    <button type="submit" className="btn-action-pro btn-primary" style={{ padding: '1.15rem 5rem', fontSize: '1.1rem' }}>Commit Strategy</button>
+                    <button type="button" onClick={() => setShowCreateForm(false)} className="btn-action-pro" style={{ padding: '1.15rem 3.5rem' }} disabled={isSubmitting}>Cancel</button>
+                    <button type="submit" className="btn-action-pro btn-primary" style={{ padding: '1.15rem 5rem', fontSize: '1.1rem', opacity: isSubmitting ? 0.7 : 1 }} disabled={isSubmitting}>
+                        {isSubmitting ? <><Loader2 size={18} className="spin" style={{ marginRight: '8px' }} />Saving...</> : 'Commit Strategy'}
+                    </button>
                 </div>
               </form>
             </motion.div>
@@ -333,9 +392,14 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
                         </div>
                     </div>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); handleDelete(job.id); }} className="btn-action-pro" style={{ color: 'var(--danger)', padding: '8px', background: 'hsla(0, 85%, 60%, 0.05)', borderRadius: '12px', flexShrink: 0 }}>
-                    <Trash2 size={18} />
-                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                    <button onClick={(e) => { e.stopPropagation(); handleDelete(job.id); }} className="btn-action-pro" style={{ color: 'var(--danger)', padding: '8px', background: 'hsla(0, 85%, 60%, 0.05)', borderRadius: '12px', flexShrink: 0 }}>
+                        <Trash2 size={18} />
+                    </button>
+                    <span style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '800' }}>
+                        {job.applications?.length || 0} Applicants
+                    </span>
+                </div>
             </div>
 
             {/* Metadata Badges */}
@@ -349,7 +413,7 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
                     {job.type || 'Full-Time'}
                 </span>
                 <span style={{ background: 'hsla(255,255%,255%,0.03)', color: 'var(--text-dim)', border: '1px solid var(--card-border)', padding: '5px 14px', borderRadius: '30px', fontSize: '0.8rem', fontWeight: '700' }}>
-                    Posted {job.posted}
+                    Posted {formatTimeAgo(job.createdAt)}
                 </span>
                 <span style={{ background: 'hsla(255,255%,255%,0.03)', color: expandedId === job.id ? 'var(--primary)' : 'var(--text-dim)', border: '1px solid var(--card-border)', padding: '5px 14px', borderRadius: '30px', fontSize: '0.8rem', fontWeight: '700', transition: 'all 0.3s' }}>
                     {expandedId === job.id ? '▲ Collapse' : '▼ View Details'}
@@ -417,6 +481,34 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
                                     <p style={{ color: 'white', fontSize: '0.9rem', lineHeight: '1.6' }}>{job.culture || 'High-velocity DNA.'}</p>
                                 </div>
                             </div>
+                            {/* Active Applicants Panel */}
+                            {job.applications && job.applications.length > 0 && (
+                                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.75rem', borderRadius: '22px', border: '1px dashed var(--card-border)' }}>
+                                    <div style={{ color: '#fff', fontWeight: '900', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Users size={16} color="var(--primary)" /> Active Applicants
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        {job.applications.map(app => (
+                                            <div key={app.id} 
+                                                 onClick={(e) => { e.stopPropagation(); setSelectedCandidateForProfile(app.candidate); }}
+                                                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-primary)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--card-border)', cursor: 'pointer', transition: 'all 0.2s' }}
+                                                 className="candidate-row-hover"
+                                            >
+                                                <div>
+                                                    <span style={{ color: 'white', fontWeight: '700', fontSize: '0.95rem' }}>{app.candidate?.name}</span>
+                                                    <div style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>{app.candidate?.email}</div>
+                                                </div>
+                                                <div style={{ textAlign: 'right' }}>
+                                                    <span style={{ background: app.candidate?.match > 80 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.05)', color: app.candidate?.match > 80 ? '#10b981' : 'var(--text-dim)', padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '800' }}>
+                                                        {app.candidate?.match}% Match
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                         </div>
                     </motion.div>
                 )}
@@ -432,6 +524,11 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
           <p style={{ color: '#9ca3af', fontSize: '0.9rem' }}>Click "New Job Posting" to get started.</p>
         </div>
       )}
+      <TalentProfileModal 
+        isOpen={!!selectedCandidateForProfile}
+        onClose={() => setSelectedCandidateForProfile(null)}
+        candidate={selectedCandidateForProfile}
+      />
     </div>
   );
 };
