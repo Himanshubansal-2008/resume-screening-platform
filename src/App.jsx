@@ -40,7 +40,7 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
           </div>
           <h2 className="brand-font" style={{ color: 'white', fontSize: '1.8rem' }}>HireAI</h2>
         </div>
-        
+
         <nav style={{ flex: 1 }}>
           {isAdmin ? (
             <>
@@ -92,6 +92,7 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
         </div>
       </aside>
 
+      {/* ── Main Content (light) ── */}
       <main className="main-content">
         <header style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4rem', alignItems: 'center' }}>
           <div>
@@ -120,6 +121,13 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
             )}
           </motion.div>
         </AnimatePresence>
+
+        <style>{`
+          @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+          }
+        `}</style>
       </main>
     </div>
   );

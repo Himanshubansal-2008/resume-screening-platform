@@ -125,6 +125,7 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
 
   const handleCreate = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
       const payload = {
         ...newJob,
@@ -423,6 +424,14 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
           </motion.div>
         ))}
       </div>
+
+      {jobs.length === 0 && (
+        <div style={{ padding: '6rem', textAlign: 'center', background: 'white', borderRadius: '20px', border: '2px dashed #e5e7eb' }}>
+          <Briefcase size={48} style={{ color: '#d1d5db', marginBottom: '1.5rem' }} />
+          <h4 style={{ color: '#374151', fontWeight: '700', marginBottom: '0.5rem' }}>No job postings yet</h4>
+          <p style={{ color: '#9ca3af', fontSize: '0.9rem' }}>Click "New Job Posting" to get started.</p>
+        </div>
+      )}
     </div>
   );
 };

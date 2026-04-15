@@ -49,6 +49,7 @@ h1, h2, h3, h4, .brand-font {
 .app-container {
   display: flex;
   min-height: 100vh;
+  background: var(--canvas-bg);
 }
 
 .sidebar {
@@ -63,6 +64,7 @@ h1, h2, h3, h4, .brand-font {
   display: flex;
   flex-direction: column;
   z-index: 100;
+  background: var(--sidebar-bg);
 }
 
 .main-content {
@@ -163,6 +165,7 @@ h1, h2, h3, h4, .brand-font {
   background: transparent;
   cursor: pointer;
   transition: all 0.2s;
+  font-size: 0.9rem;
 }
 
 .nav-item-pro:hover {
@@ -278,7 +281,6 @@ h1, h2, h3, h4, .brand-font {
   gap: 12px !important;
   width: 100% !important;
 }
-
 .login-btn:hover {
   transform: translateY(-3px) scale(1.02) !important;
   filter: brightness(1.1) !important;

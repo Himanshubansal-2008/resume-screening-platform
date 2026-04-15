@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { HelpCircle, ChevronDown, ChevronUp, CheckCircle, Video, ArrowRight } from 'lucide-react';
+import { HelpCircle, ChevronDown, ChevronUp, Video, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MOCK_QUESTIONS = [
@@ -23,91 +23,90 @@ const MOCK_QUESTIONS = [
   }
 ];
 
+const categoryColors = {
+  'Architecture': { bg: '#eff6ff', color: '#3b82f6' },
+  'Technical Depth': { bg: '#f0fdf4', color: '#10b981' },
+  'Behavioral': { bg: '#fff7ed', color: '#f97316' },
+};
+
 const CandidatePrepHub = ({ setActiveTab }) => {
   const [expandedId, setExpandedId] = useState(null);
 
-  const toggleExpand = (id) => {
-    setExpandedId(expandedId === id ? null : id);
-  };
-
   return (
     <div className="fadeIn" style={{ maxWidth: '900px', margin: '0 auto' }}>
-      <div style={{ marginBottom: '3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem' }}>
         <div>
-          <h2 style={{ color: 'white', fontSize: '1.75rem', fontWeight: '800' }}>Interview Prep Hub</h2>
-          <p style={{ color: '#94a3b8', marginTop: '0.5rem' }}>AI-curated questions based on your resume profile and target role.</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.5rem' }}>
+            <Sparkles size={16} color="#3b82f6" />
+            <span style={{ fontSize: '0.72rem', fontWeight: '800', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.08em' }}>AI-Curated</span>
+          </div>
+          <h2 style={{ color: 'var(--text-primary)', fontSize: '1.6rem', fontWeight: '800', fontFamily: 'Outfit, sans-serif' }}>Interview Prep Hub</h2>
+          <p style={{ color: 'var(--text-secondary)', marginTop: '0.35rem', fontSize: '0.88rem' }}>AI-curated questions based on your resume profile and target role.</p>
         </div>
-        
-        <button 
-            onClick={() => setActiveTab('mockbot')}
-            style={{ 
-                padding: '1rem 2rem', 
-                background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)', 
-                color: 'white', 
-                border: 'none', 
-                borderRadius: '16px', 
-                fontSize: '1rem', 
-                fontWeight: '700', 
-                cursor: 'pointer', 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '10px',
-                boxShadow: '0 8px 24px rgba(59, 130, 246, 0.4)'
-            }}
+
+        <button
+          onClick={() => setActiveTab('mockbot')}
+          className="btn-primary"
         >
-            <Video size={20} /> Enter Simulation Arena
+          <Video size={18} /> Enter Simulation Arena
         </button>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-        {MOCK_QUESTIONS.map((q) => (
-          <div 
-            key={q.id} 
-            style={{ 
-                background: 'rgba(255,255,255,0.02)', 
-                border: expandedId === q.id ? '1px solid #3b82f6' : '1px solid rgba(255,255,255,0.08)',
-                borderRadius: '16px', 
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {MOCK_QUESTIONS.map((q, i) => {
+          const catStyle = categoryColors[q.category] || { bg: '#f3f4f6', color: '#6b7280' };
+          return (
+            <motion.div
+              key={q.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.08 }}
+              className="card"
+              style={{
+                padding: 0,
                 overflow: 'hidden',
-                transition: 'all 0.3s'
-            }}
-          >
-            <div 
-                onClick={() => toggleExpand(q.id)}
-                style={{ padding: '1.5rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                border: expandedId === q.id ? '1px solid #bfdbfe' : '1px solid #e5e7eb',
+                background: expandedId === q.id ? '#fafcff' : 'white'
+              }}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', padding: '6px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>
-                        {q.category}
-                    </div>
-                    <h3 style={{ color: 'white', fontSize: '1.1rem', fontWeight: '600' }}>{q.question}</h3>
+              <div
+                onClick={() => setExpandedId(expandedId === q.id ? null : q.id)}
+                style={{ padding: '1.5rem 1.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
+                  <span style={{ background: catStyle.bg, color: catStyle.color, padding: '4px 12px', borderRadius: '7px', fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                    {q.category}
+                  </span>
+                  <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', fontWeight: '600', lineHeight: '1.5' }}>{q.question}</h3>
                 </div>
-                <div style={{ color: '#94a3b8' }}>
-                    {expandedId === q.id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                <div style={{ color: '#9ca3af', marginLeft: '1rem', flexShrink: 0 }}>
+                  {expandedId === q.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                 </div>
-            </div>
+              </div>
 
-            <AnimatePresence>
+              <AnimatePresence>
                 {expandedId === q.id && (
-                    <motion.div 
-                        initial={{ height: 0, opacity: 0 }} 
-                        animate={{ height: 'auto', opacity: 1 }} 
-                        exit={{ height: 0, opacity: 0 }}
-                        style={{ overflow: 'hidden' }}
-                    >
-                        <div style={{ padding: '0 2rem 2rem 2rem' }}>
-                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1.5rem', marginTop: '0.5rem', display: 'flex', gap: '12px' }}>
-                                <HelpCircle size={20} color="#10b981" style={{ flexShrink: 0, marginTop: '2px' }} />
-                                <div>
-                                    <h4 style={{ color: '#10b981', marginBottom: '8px', fontSize: '0.9rem' }}>AI Response Strategy</h4>
-                                    <p style={{ color: '#94a3b8', lineHeight: '1.6', fontSize: '0.95rem' }}>{q.hint}</p>
-                                </div>
-                            </div>
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    style={{ overflow: 'hidden' }}
+                  >
+                    <div style={{ padding: '0 1.75rem 1.75rem' }}>
+                      <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '1.5rem', display: 'flex', gap: '12px' }}>
+                        <HelpCircle size={18} color="#10b981" style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <div>
+                          <h4 style={{ color: '#10b981', marginBottom: '8px', fontSize: '0.82rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em' }}>AI Response Strategy</h4>
+                          <p style={{ color: 'var(--text-secondary)', lineHeight: '1.7', fontSize: '0.9rem' }}>{q.hint}</p>
                         </div>
-                    </motion.div>
+                      </div>
+                    </div>
+                  </motion.div>
                 )}
-            </AnimatePresence>
-          </div>
-        ))}
+              </AnimatePresence>
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );
