@@ -139,16 +139,7 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
     </div>
   );
 };
-        <style>{`
-          @keyframes pulse-dot {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-          }
-        `}</style>
-      </main>
-    </div>
-  );
-};
+
 
 const App = () => {
   const [activeTab, setActiveTab] = useState('dashboard');

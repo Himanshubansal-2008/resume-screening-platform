@@ -18,6 +18,10 @@
 .gap-15 { gap: 1.5rem; }
 .gap-2 { gap: 2rem; }
 .gap-3 { gap: 3rem; }
+.gap-10px { gap: 10px; }
+.gap-6px { gap: 6px; }
+.gap-8px { gap: 8px; }
+.gap-12px { gap: 12px; }
 .w-full { width: 100%; }
 .min-w-0 { min-width: 0; }
 .relative { position: relative; }
@@ -566,3 +570,89 @@
 .z-0 { z-index: 0; }
 .z-10 { z-index: 10; }
 .z-1000 { z-index: 1000; }
+
+.gap-10px { gap: 10px; }
+.gap-6px { gap: 6px; }
+.gap-8px { gap: 8px; }
+.gap-12px { gap: 12px; }
+
+.admin-right-bar { width: 380px; }
+.v-divider-bar { width: 1px; height: 20px; background: var(--card-border); margin: 0 2rem; }
+
+.search-icon-pos { 
+    position: absolute; 
+    left: 16px; 
+    top: 50%; 
+    transform: translateY(-50%); 
+}
+
+.note-indicator {
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    width: 6px;
+    height: 6px;
+    background: var(--primary);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--primary-glow);
+}
+
+.badge-match-pos {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+}
+
+.match-val-lg {
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: var(--primary);
+    line-height: 1;
+}
+
+.match-tag-sm {
+    font-size: 0.6rem;
+    font-weight: 900;
+    color: var(--primary);
+    opacity: 0.7;
+    text-transform: uppercase;
+    margin-top: 2px;
+}
+
+.shadow-glow { box-shadow: 0 0 10px var(--primary-glow); }
+.shadow-glow-success { box-shadow: 0 0 10px hsla(150, 80%, 45%, 0.4); }
+
+.bg-danger-10 { background: hsla(0, 85%, 60%, 0.1); }
+.text-danger-60 { color: hsla(0, 85%, 60%, 0.6); }
+
+.pill-btn-pro {
+    padding: 4px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--card-border);
+    font-size: 0.75rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: hsla(0,0%,100%,0.03);
+    color: var(--text-muted);
+}
+.pill-btn-pro.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.icon-only-36 {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.danger-action-bg {
+    background: hsla(0, 85%, 60%, 0.05);
+    color: var(--danger);
+    border: none;
+}
