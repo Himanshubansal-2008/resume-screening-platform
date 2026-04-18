@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Users, FileText, LayoutDashboard, Database, Search, 
   TrendingUp, CheckCircle, AlertCircle, MessageSquare, Plus,
-  ShieldCheck, HelpCircle, Cpu, ChevronRight, ClipboardList, Bot, ArrowRight 
+  ShieldCheck, HelpCircle, Cpu, ChevronRight, ClipboardList, Bot, ArrowRight, User
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from '@clerk/clerk-react';
@@ -15,6 +15,7 @@ import CandidateSubmit from './components/candidate/CandidateSubmit';
 import CandidateJobBoard from './components/candidate/CandidateJobBoard';
 import CandidateHome from './components/candidate/CandidateHome';
 import CandidatePrepHub from './components/candidate/CandidatePrepHub';
+import CandidateProfile from './components/candidate/CandidateProfile';
 
 const ADMIN_EMAILS = [
   "himanshubansal1803@gmail.com", "nikhiltelkar19@gmail.com", 
@@ -83,6 +84,9 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
               <button className={`nav-item-pro ${activeTab === 'prephub' ? 'active' : ''}`} onClick={() => setActiveTab('prephub')}>
                 <HelpCircle size={20} /> <span>Interview Prep Hub</span>
               </button>
+              <button className={`nav-item-pro ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>
+                <User size={20} /> <span>My Profile</span>
+              </button>
             </>
           )}
         </nav>
@@ -117,6 +121,7 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
                activeTab === 'dashboard' ? <CandidateHome user={user} candidates={candidates} myProfile={myProfile} recommendations={recommendations} /> : 
                activeTab === 'submit' ? <CandidateSubmit onRefresh={onRefresh} setActiveTab={setActiveTab} /> :
                activeTab === 'jobboard' ? <CandidateJobBoard user={user} allJobs={jobs} myProfile={myProfile} onRefresh={onRefresh} recommendations={recommendations} setActiveTab={setActiveTab} /> :
+               activeTab === 'profile' ? <CandidateProfile user={user} myProfile={myProfile} onRefresh={onRefresh} /> :
                <CandidatePrepHub />
             )}
           </motion.div>
