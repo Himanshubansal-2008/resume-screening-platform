@@ -14,14 +14,22 @@ import {
   BadgeCheck,
   Save,
   StickyNote,
-  ChevronRight
+  ChevronRight,
+  TrendingUp,
+  SlidersHorizontal,
+  LayoutGrid,
+  List,
+  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NotesModal from '../shared/NotesModal';
 import TalentProfileModal from '../shared/TalentProfileModal';
+import './Admin.css';
 
 const AdminResumeDatabase = ({ candidates, onOpenChat, onRefresh }) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [matchFilter, setMatchFilter] = useState(0); 
+  const [viewMode, setViewMode] = useState('grid'); 
   const [savingId, setSavingId] = useState(null);
   const [selectedCandidateForNotes, setSelectedCandidateForNotes] = useState(null);
   const [selectedCandidateForProfile, setSelectedCandidateForProfile] = useState(null);
@@ -30,10 +38,15 @@ const AdminResumeDatabase = ({ candidates, onOpenChat, onRefresh }) => {
     const name = c?.name || "";
     const role = c?.role || "";
     const skills = Array.isArray(c?.skills) ? c.skills : [];
+    const match = c?.match || 0;
     
-    return name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           skills.some(s => s.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          role.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          skills.some(s => s.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesMatch = match >= matchFilter;
+    
+    return matchesSearch && matchesMatch;
   });
 
   const handleSaveNotes = async (notes) => {
@@ -67,121 +80,114 @@ const AdminResumeDatabase = ({ candidates, onOpenChat, onRefresh }) => {
   };
 
   return (
-    <div className="fadeIn">
-      {/* Search Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem', gap: '2rem' }}>
-        <div style={{ position: 'relative', flex: 1, maxWidth: '600px' }}>
-          <Search style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} size={20} />
+    <div className="fadeIn admin-page-container">
+      
+      <div className="flex items-center gap-15">
+        <div className="admin-search-wrapper">
+          <Search className="search-icon-abs" size={20} />
           <input 
             type="text" 
-            placeholder="Search by name, role, or skill..." 
+            placeholder="Index search: Name, role, or technical keywords..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ 
-              width: '100%', 
-              background: 'var(--card-bg)', 
-              border: '1px solid var(--card-border)', 
-              padding: '1.25rem 1.25rem 1.25rem 3.5rem', 
-              borderRadius: '16px', 
-              color: 'white',
-              fontSize: '1rem',
-              outline: 'none'
-            }} 
+            className="admin-search-field"
           />
         </div>
 
-        <button onClick={() => onOpenChat()} className="btn-action-pro btn-primary" style={{ padding: '1.25rem 2.5rem' }}>
-            <Bot size={20} /> ASK HireAI Intelligence
+        <button onClick={() => onOpenChat()} className="btn-action-pro btn-primary h-14 px-8">
+            <Bot size={18} /> ASK HireAI
         </button>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ padding: '10px', background: 'hsla(217, 91%, 60%, 0.1)', borderRadius: '12px', color: 'var(--primary)' }}><History size={20} /></div>
-            <div>
-                <h3 style={{ color: 'white', fontSize: '1.75rem', fontWeight: '800', marginBottom: '2px' }}>Candidate Repository</h3>
-                <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>Comprehensive AI talent database</p>
+      <div className="filter-bar-shell flex justify-between items-center">
+        <div className="flex items-center">
+            <div className="flex items-center gap-1">
+                <Filter size={16} color="var(--primary)" />
+                <span className="text-muted-700 text-xs font-bold uppercase tracking-wider">Min Fit:</span>
+                <div className="flex gap-05">
+                    {[0, 70, 85, 95].map(m => (
+                        <button 
+                            key={m} 
+                            onClick={() => setMatchFilter(m)}
+                            className={`pill-btn-pro ${matchFilter === m ? 'active' : ''}`}
+                        >
+                            {m === 0 ? 'Any' : `${m}%+`}
+                        </button>
+                    ))}
+                </div>
             </div>
-            <span className="pill-capsule" style={{ marginLeft: '12px', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
-                {filteredCandidates.length} Profiles
-            </span>
+            <div className="v-line"></div>
+            <div className="admin-desc-muted font-bold">
+                <span className="text-white">{filteredCandidates.length}</span> Profiles Indexed
+            </div>
+        </div>
+
+        <div className="flex gap-05">
+            <button 
+                onClick={() => setViewMode('grid')}
+                className={`card-icon-button ${viewMode === 'grid' ? 'active' : ''} w-10 h-10 flex items-center justify-center`}
+            >
+                <LayoutGrid size={18} />
+            </button>
+            <button 
+                onClick={() => setViewMode('list')}
+                className={`card-icon-button ${viewMode === 'list' ? 'active' : ''} w-10 h-10 flex items-center justify-center`}
+            >
+                <List size={18} />
+            </button>
         </div>
       </div>
 
-      {/* Repository Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '2.5rem' }}>
+      <div className={viewMode === 'grid' ? 'jobs-layout-grid' : 'flex-col gap-1'}>
         <AnimatePresence mode="popLayout">
-            {filteredCandidates.map(c => (
+            {filteredCandidates.map((c, i) => (
               <motion.div 
                 layout
                 key={c.id}
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="glass-card"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="glass-card admin-item-card relative"
                 onClick={() => setSelectedCandidateForProfile(c)}
                 style={{ 
-                    padding: '1.75rem', 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    gap: '1.5rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s',
-                    position: 'relative'
+                    flexDirection: viewMode === 'grid' ? 'column' : 'row',
+                    alignItems: viewMode === 'grid' ? 'stretch' : 'center',
+                    padding: viewMode === 'grid' ? '2rem' : '1.25rem 2rem'
                 }}
               >
-                <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px', background: 'hsla(217, 91%, 60%, 0.1)', padding: '6px 12px', borderRadius: '12px', border: '1px solid hsla(217, 91%, 60% , 0.2)' }}>
-                    <BadgeCheck size={14} color="var(--primary)" />
-                    <span style={{ fontSize: '0.85rem', fontWeight: '900', color: 'var(--primary)' }}>{c.match}%</span>
+                
+                <div className={`match-score-indicator ${viewMode === 'grid' ? 'absolute top-8 right-8' : ''}`}>
+                    <div className="match-val-pro">{c.match}%</div>
+                    <div className="match-label-pro">FIT</div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                    <div style={{ width: '56px', height: '56px', background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <User size={28} color="white" />
-                    </div>
-                    <div>
-                        <h4 style={{ color: 'white', fontSize: '1.25rem', fontWeight: '800', marginBottom: '2px' }}>{c.name}</h4>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-dim)', fontSize: '0.85rem', fontWeight: '600' }}>
-                            <ArrowUpRight size={14} /> {c.role}
+                <div className="flex items-center gap-1 flex-1">
+                    <div className="admin-avatar-box"><User size={24} color="white" /></div>
+                    <div className="min-w-0">
+                        <h4 className="card-title-white no-margin">{c.name}</h4>
+                        <div className="card-role-text">
+                            <ArrowUpRight size={14} color="var(--primary)" /> {c.role || "Knowledge Node"}
                         </div>
                     </div>
                 </div>
 
-                {/* Always-visible punchy summary */}
-                <div style={{ background: 'hsla(255, 255%, 255%, 0.02)', padding: '1rem', borderRadius: '14px', border: '1px solid var(--card-border)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary)', fontSize: '0.65rem', fontWeight: '900', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.08em' }}>
-                        <FileText size={14} /> AI SNAPSHOT
+                {viewMode === 'grid' && (
+                    <div className="flex-col gap-05 mt-4 p-4 rounded-xl bg-white-02 border border-white-05">
+                        <div className="pro-section-label"><Sparkles size={14} /> AI ANALYSIS</div>
+                        <p className="card-summary-clamped">{c.summary}</p>
                     </div>
-                    <p style={{ 
-                        color: 'var(--text-dim)', 
-                        fontSize: '0.9rem', 
-                        lineHeight: '1.5',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden'
-                    }}>
-                        {c.summary}
-                    </p>
-                </div>
+                )}
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '1.25rem', borderTop: '1px solid var(--card-border)' }}>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: '600' }}>{c.applied}</div>
-                    
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        <button onClick={(e) => { e.stopPropagation(); setSelectedCandidateForNotes(c); }} className="btn-action-pro btn-ghost" style={{ width: '38px', height: '38px', padding: 0, position: 'relative' }}>
-                            <StickyNote size={18} />
-                            {c.notes && c.notes.trim() !== "" && (
-                                <span className="pulse" style={{ position: 'absolute', top: '7px', right: '7px', width: '6px', height: '6px', background: 'var(--primary)', borderRadius: '50%' }}></span>
-                            )}
+                <div className={`flex justify-between items-center ${viewMode === 'grid' ? 'mt-auto pt-4 border-t border-white-05' : 'min-w-[180px]'}`}>
+                    {viewMode === 'grid' && <div className="admin-desc-muted text-xs font-bold">{c.applied}</div>}
+                    <div className="flex gap-05">
+                        <button onClick={(e) => { e.stopPropagation(); setSelectedCandidateForNotes(c); }} className="card-icon-button relative w-9 h-9 flex items-center justify-center">
+                            <StickyNote size={16} />
+                            {c.notes && c.notes.trim() !== "" && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary rounded-full shadow-glow"></span>}
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); onOpenChat(c); }} className="btn-action-pro btn-ghost" style={{ width: '38px', height: '38px', padding: 0 }}>
-                            <MessageSquare size={18} />
-                        </button>
-                        <button onClick={(e) => handleDownload(e, c)} className="btn-action-pro btn-ghost" style={{ width: '38px', height: '38px', padding: 0 }}>
-                            <Download size={18} />
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); }} className="btn-action-pro" style={{ width: '38px', height: '38px', padding: 0, background: 'hsla(0, 85%, 60%, 0.1)', color: 'var(--danger)', border: '1px solid hsla(0, 85%, 60%, 0.1)' }}><Trash2 size={18} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); onOpenChat(c); }} className="card-icon-button w-9 h-9 flex items-center justify-center"><Bot size={16} /></button>
+                        <button onClick={(e) => handleDownload(e, c)} className="card-icon-button w-9 h-9 flex items-center justify-center"><Download size={16} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); }} className="card-icon-button danger-ghost w-9 h-9 flex items-center justify-center"><Trash2 size={16} /></button>
                     </div>
                 </div>
               </motion.div>
@@ -189,21 +195,8 @@ const AdminResumeDatabase = ({ candidates, onOpenChat, onRefresh }) => {
         </AnimatePresence>
       </div>
 
-      {/* Global Modals */}
-      <NotesModal 
-        isOpen={!!selectedCandidateForNotes}
-        onClose={() => setSelectedCandidateForNotes(null)}
-        onSave={handleSaveNotes}
-        initialValue={selectedCandidateForNotes?.notes || ""}
-        title={`Notes for ${selectedCandidateForNotes?.name}`}
-        isSaving={savingId === selectedCandidateForNotes?.id}
-      />
-
-      <TalentProfileModal 
-        isOpen={!!selectedCandidateForProfile}
-        onClose={() => setSelectedCandidateForProfile(null)}
-        candidate={selectedCandidateForProfile}
-      />
+      <NotesModal isOpen={!!selectedCandidateForNotes} onClose={() => setSelectedCandidateForNotes(null)} onSave={handleSaveNotes} initialValue={selectedCandidateForNotes?.notes || ""} title={`Notes for ${selectedCandidateForNotes?.name}`} isSaving={savingId === selectedCandidateForNotes?.id} />
+      <TalentProfileModal isOpen={!!selectedCandidateForProfile} onClose={() => setSelectedCandidateForProfile(null)} candidate={selectedCandidateForProfile} />
     </div>
   );
 };

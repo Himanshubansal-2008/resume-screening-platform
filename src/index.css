@@ -19,10 +19,10 @@
   --text-dim: hsl(215, 20%, 70%);
   --text-muted: hsl(215, 15%, 50%);
   
-  --sidebar-width: 290px;
-  --radius-xl: 28px;
-  --radius-lg: 18px;
-  --transition: cubic-bezier(0.4, 0, 0.2, 1);
+  --sidebar-width: 280px;
+  --radius-xl: 32px;
+  --radius-lg: 20px;
+  --transition: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 * {
@@ -76,18 +76,19 @@ h1, h2, h3, h4, .brand-font {
 /* Premium Components */
 .glass-card {
   background: var(--card-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid var(--card-border);
   border-radius: var(--radius-xl);
   padding: 2.5rem;
-  transition: transform 0.3s var(--transition), border-color 0.3s var(--transition), box-shadow 0.3s var(--transition);
+  transition: all 0.4s var(--transition);
+  box-shadow: 0 10px 30px -10px rgba(0,0,0,0.3);
 }
 
 .glass-card:hover {
-  transform: translateY(-4px);
-  border-color: hsla(217, 91%, 60%, 0.3);
-  box-shadow: 0 20px 40px -20px rgba(0,0,0,0.5);
+  transform: translateY(-6px);
+  border-color: hsla(217, 91%, 60%, 0.4);
+  box-shadow: 0 30px 60px -15px rgba(0,0,0,0.6), 0 0 20px -5px var(--primary-glow);
 }
 
 .modal-overlay {
@@ -155,28 +156,29 @@ h1, h2, h3, h4, .brand-font {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 1rem 1.25rem;
-  border-radius: 16px;
-  color: var(--text-muted);
-  font-weight: 600;
-  margin-bottom: 0.5rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: 14px;
+  color: var(--text-dim);
+  font-weight: 700;
   width: 100%;
   border: 1px solid transparent;
   background: transparent;
   cursor: pointer;
-  transition: all 0.2s;
-  font-size: 0.9rem;
+  transition: all 0.2s var(--transition);
+  font-size: 0.88rem;
 }
 
 .nav-item-pro:hover {
-  background: hsla(255, 255%, 255%, 0.03);
-  color: var(--text-main);
+  background: hsla(0,0%,100%,0.03);
+  color: white;
+  transform: translateX(4px);
 }
 
 .nav-item-pro.active {
   background: hsla(217, 91%, 60%, 0.1);
   color: var(--primary);
-  border: 1px solid hsla(217, 91%, 60%, 0.2);
+  border: 1px solid hsla(217, 91%, 60%, 0.25);
+  box-shadow: 0 4px 15px -5px var(--primary-glow);
 }
 
 /* Utility Pills */
