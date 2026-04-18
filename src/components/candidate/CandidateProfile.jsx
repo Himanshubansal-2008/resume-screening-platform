@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const MAX_RESUMES = 5;
+const MAX_RESUMES = 4;
 const API_BASE = 'http://localhost:5001/api';
 const STORAGE_KEY = (email) => `hireai_resumes_${email}`;
 
@@ -80,7 +80,7 @@ const ScoreRing = ({ score }) => {
 };
 
 /* ═══════════════════════════════════════════ */
-const CandidateProfile = ({ user, myProfile, onRefresh }) => {
+const CandidateProfile = ({ user, myProfile, onRefresh, setActiveTab }) => {
   const [copied, setCopied] = useState(false);
 
   /* ── Resume Vault state ── */
@@ -301,23 +301,19 @@ const CandidateProfile = ({ user, myProfile, onRefresh }) => {
 
               {/* Upload button */}
               <div>
-                <input type="file" ref={fileInputRef} accept="application/pdf"
-                  onChange={handleFileChange} style={{ display: 'none' }} />
                 <button
-                  onClick={() => resumes.length < MAX_RESUMES && uploadState === 'idle' && fileInputRef.current?.click()}
-                  disabled={resumes.length >= MAX_RESUMES || uploadState === 'uploading'}
+                  onClick={() => typeof setActiveTab === 'function' && setActiveTab('submit')}
+                  disabled={resumes.length >= MAX_RESUMES}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '9px 18px', borderRadius: 14,
                     background: resumes.length >= MAX_RESUMES ? 'hsla(255,100%,100%,0.04)' : 'var(--primary)',
                     color: resumes.length >= MAX_RESUMES ? 'var(--text-muted)' : 'white',
                     border: 'none', fontWeight: 800, fontSize: '0.82rem',
-                    cursor: resumes.length >= MAX_RESUMES || uploadState === 'uploading' ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.2s', opacity: uploadState === 'uploading' ? 0.7 : 1
+                    cursor: resumes.length >= MAX_RESUMES ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s'
                   }}>
-                  {uploadState === 'uploading'
-                    ? <><Loader2 size={15} className="spin" /> Analyzing…</>
-                    : <><Plus size={15} /> Add Resume</>}
+                  <><Plus size={15} /> Add Resume</>
                 </button>
               </div>
             </div>

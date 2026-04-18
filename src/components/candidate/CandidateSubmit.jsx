@@ -9,6 +9,7 @@ const CandidateSubmit = ({ setActiveTab, onRefresh }) => {
   const [score, setScore] = useState(0);
   const [summary, setSummary] = useState("");
   const [extractedName, setExtractedName] = useState("");
+  const [resumeTitle, setResumeTitle] = useState("");
   const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = useRef(null);
   const { user } = useUser();
@@ -22,6 +23,13 @@ const CandidateSubmit = ({ setActiveTab, onRefresh }) => {
   const uploadFile = async (file) => {
     if (file.type !== 'application/pdf') {
         alert("Please upload a PDF file.");
+        return;
+    }
+
+    const STORAGE_KEY = `hireai_resumes_${user?.primaryEmailAddress?.emailAddress}`;
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    if (stored.length >= 4) {
+        alert("You can store up to 4 resumes. Please delete one from your profile first.");
         return;
     }
 
@@ -56,6 +64,21 @@ const CandidateSubmit = ({ setActiveTab, onRefresh }) => {
           clearInterval(interval);
           setUploadState('complete');
           setSummary(data.summary || "");
+          
+          const finalStored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+          if (finalStored.length < 4) {
+            const entry = {
+              id: Date.now(),
+              name: resumeTitle.trim() !== '' ? resumeTitle.trim() : file.name,
+              date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
+              score: data.match || 0,
+              summary: data.summary || '',
+              active: finalStored.length === 0
+            };
+            const updated = finalStored.length === 0 ? [entry] : [...finalStored, { ...entry, active: false }];
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+          }
+
           if (onRefresh) onRefresh();
         }
       }, 15);
@@ -101,6 +124,18 @@ const CandidateSubmit = ({ setActiveTab, onRefresh }) => {
         accept="application/pdf" 
         onChange={handleFileChange}
       />
+
+      <div style={{ marginBottom: '2rem' }}>
+        <label style={{ display: 'block', color: 'var(--text-muted)', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 600 }}>Resume Title (Optional)</label>
+        <input 
+          type="text" 
+          value={resumeTitle}
+          onChange={(e) => setResumeTitle(e.target.value)}
+          placeholder="e.g. Frontend Developer Resume - 2024"
+          disabled={uploadState === 'uploading'}
+          style={{ width: '100%', maxWidth: '400px', background: 'hsla(255, 255%, 255%, 0.03)', border: '1px solid var(--card-border)', padding: '12px 16px', borderRadius: '12px', color: 'white', fontSize: '1rem', outline: 'none' }}
+        />
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '3rem', alignItems: 'start' }}>
         {/* Upload Zone */}

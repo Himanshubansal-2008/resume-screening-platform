@@ -3,7 +3,7 @@ import { TrendingUp, Cpu, Sparkles, CheckCircle, Zap, Lightbulb, Target, ArrowUp
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Generate AI resume tips from real profile data
-function generateTips(myProfile) {
+function generateTipsFallback(myProfile) {
   const tips = [];
   const skills = myProfile?.skills || [];
   const score = myProfile?.match || 0;
@@ -27,9 +27,28 @@ function generateTips(myProfile) {
   return tips.slice(0, 4);
 }
 
+function generateTips(myProfile) {
+  let analysis = myProfile?.detailedAnalysis;
+  if (typeof analysis === 'string') {
+    try { analysis = JSON.parse(analysis); } catch (e) {}
+  }
+  const aiTips = analysis?.tips;
+  if (aiTips && Array.isArray(aiTips) && aiTips.length > 0) {
+    return aiTips.map(t => {
+      let icon = Lightbulb;
+      let color = '#a78bfa'; let bg = 'hsla(255,90%,75%,0.06)'; let border = 'hsla(255,90%,75%,0.15)';
+      if (t.type === 'critical') { icon = AlertTriangle; color = '#f59e0b'; bg = 'hsla(45,100%,50%,0.06)'; border = 'hsla(45,100%,50%,0.15)'; }
+      else if (t.type === 'warning') { icon = Target; color = '#3b82f6'; bg = 'hsla(217,91%,60%,0.06)'; border = 'hsla(217,91%,60%,0.15)'; }
+      else if (t.type === 'success') { icon = Star; color = '#10b981'; bg = 'hsla(150,80%,45%,0.06)'; border = 'hsla(150,80%,45%,0.15)'; }
+      return { ...t, icon, color, bg, border };
+    }).slice(0, 4);
+  }
+  return generateTipsFallback(myProfile);
+}
+
 const CandidateHome = ({ user, myProfile, recommendations = [] }) => {
   const [tipExpanded, setTipExpanded] = useState(null);
-  const displayScore = recommendations[0]?.matchPercent || myProfile?.match || 0;
+  const displayScore = myProfile?.match || 0;
   const aiSummary = myProfile?.summary || "Analyzing your experience...";
   const aiReview = myProfile?.feedback || "Your AI evaluation and feedback will appear here shortly.";
   const tips = generateTips(myProfile);

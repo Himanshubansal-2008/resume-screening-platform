@@ -79,7 +79,11 @@ function regexExtractResume(text, role) {
         detailedAnalysis: {
             technicalDeepDive: { skills, count: skills.length },
             experienceArchitecture: { score },
-            culturalCalibration: { score: 70 }
+            culturalCalibration: { score: 70 },
+            tips: [
+                { title: "Quantify Impact", body: "Add quantifiable metrics to your recent roles.", type: "tip" },
+                { title: "Expand Skills", body: "Ensure all relevant tools are mentioned.", type: "warning" }
+            ]
         },
         reason: `Matched ${skills.length} technical skills for ${role}.`,
         _provider: 'regex-fallback'
@@ -106,7 +110,7 @@ class GroqProvider {
     async analyzeResume(text, role) {
         const prompt = `Analyze this resume for the role of ${role}. Resume: ${text.slice(0, 6000)}
 Return ONLY valid JSON, no markdown:
-{"score":number,"skills":[],"summary":"two paragraphs","detailedAnalysis":{"technicalDeepDive":{},"experienceArchitecture":{},"culturalCalibration":{}},"reason":"short string"}`;
+{"score":number,"skills":[],"summary":"two paragraphs","detailedAnalysis":{"technicalDeepDive":{},"experienceArchitecture":{},"culturalCalibration":{},"tips":[{"title":"string","body":"string","type":"critical|warning|success|tip"}]},"reason":"short string"}`;
         return cleanJsonResponse(await this.call(prompt));
     }
 
@@ -138,7 +142,7 @@ class GeminiProvider {
         const prompt = `Analyze this candidate's resume for the role of ${role}.
 Resume Text: ${text.slice(0, 8000)}
 Return a valid JSON object WITH NO MARKDOWN BLOCKS:
-{"score":number(0-100),"skills":[],"summary":"Exactly two paragraphs.","detailedAnalysis":{"technicalDeepDive":{},"experienceArchitecture":{},"culturalCalibration":{}},"reason":"short summary"}`;
+{"score":number(0-100),"skills":[],"summary":"Exactly two paragraphs.","detailedAnalysis":{"technicalDeepDive":{},"experienceArchitecture":{},"culturalCalibration":{},"tips":[{"title":"short title","body":"detailed actionable tip","type":"critical|warning|success|tip"}]},"reason":"short summary"}`;
         const result = await model.generateContent(prompt);
         return cleanJsonResponse(result.response.text());
     }
@@ -246,7 +250,7 @@ app.get('/api/jobs', async (req, res) => {
 // 2.5 Applications
 app.post('/api/applications', async (req, res) => {
     try {
-        const { candidateEmail, jobId } = req.body;
+        const { candidateEmail, jobId, resumeName, resumeScore, resumeSummary, resumeSkills } = req.body;
         const candidate = await prisma.candidate.findUnique({ where: { email: candidateEmail } });
         if (!candidate) return res.status(404).json({ error: 'Candidate not found' });
 
@@ -254,6 +258,10 @@ app.post('/api/applications', async (req, res) => {
             data: {
                 candidateId: candidate.id,
                 jobId: parseInt(jobId),
+                resumeName: resumeName || null,
+                resumeScore: resumeScore || null,
+                resumeSummary: resumeSummary || null,
+                resumeSkills: resumeSkills || []
             }
         });
         res.json(application);
