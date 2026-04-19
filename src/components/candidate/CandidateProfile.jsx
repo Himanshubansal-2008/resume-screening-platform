@@ -99,19 +99,23 @@ const CandidateProfile = ({ user, myProfile, onRefresh, setActiveTab }) => {
   const experience = myProfile?.experience ?? [];
   const education = myProfile?.education ?? [];
 
-  /* ── Load vault from localStorage ── */
-  useEffect(() => {
+  /* ── Fetch vault from backend API ── */
+  const fetchResumes = async () => {
     if (!email || email === '—') return;
     try {
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY(email)) || '[]');
-      setResumes(stored);
-    } catch { setResumes([]); }
-  }, [email]);
-
-  const saveVault = (updated) => {
-    setResumes(updated);
-    localStorage.setItem(STORAGE_KEY(email), JSON.stringify(updated));
+      const res = await fetch(`${API_BASE}/candidates/${email}/resumes`);
+      if (res.ok) {
+        const data = await res.json();
+        setResumes(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch resumes:", err);
+    }
   };
+
+  useEffect(() => {
+    fetchResumes();
+  }, [email]);
 
   /* ── Upload handler ── */
   const handleFileChange = async (e) => {
@@ -140,26 +144,14 @@ const CandidateProfile = ({ user, myProfile, onRefresh, setActiveTab }) => {
     formData.append('email', email);
     formData.append('name', fullName || 'Candidate');
     formData.append('role', 'Software Engineer Applicant');
+    formData.append('resumeTitle', file.name);
 
     try {
       const res = await fetch(`${API_BASE}/candidates`, { method: 'POST', body: formData });
       if (!res.ok) throw new Error('Upload failed');
-      const data = await res.json();
+      await res.json();
 
-      const entry = {
-        id: Date.now(),
-        name: file.name,
-        date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
-        score: data.match ?? 0,
-        summary: data.summary ?? '',
-        active: resumes.length === 0   // first upload = active by default
-      };
-
-      // Deactivate others if this is now active
-      const updated = resumes.length === 0
-        ? [entry]
-        : [...resumes, { ...entry, active: false }];
-      saveVault(updated);
+      await fetchResumes();
       if (onRefresh) onRefresh();
       setUploadState('idle');
     } catch (err) {
@@ -170,18 +162,22 @@ const CandidateProfile = ({ user, myProfile, onRefresh, setActiveTab }) => {
     }
   };
 
-  const deleteResume = (id) => {
-    const updated = resumes.filter(r => r.id !== id);
-    // If we deleted the active one, make the first remaining active
-    if (updated.length > 0 && !updated.some(r => r.active)) {
-      updated[0].active = true;
+  const deleteResume = async (id) => {
+    try {
+      await fetch(`${API_BASE}/resumes/${id}`, { method: 'DELETE' });
+      await fetchResumes();
+    } catch (err) {
+      console.error("Failed to delete resume:", err);
     }
-    saveVault(updated);
   };
 
-  const setActive = (id) => {
-    const updated = resumes.map(r => ({ ...r, active: r.id === id }));
-    saveVault(updated);
+  const setActive = async (id) => {
+    try {
+      await fetch(`${API_BASE}/resumes/${id}/active`, { method: 'PUT' });
+      await fetchResumes();
+    } catch (err) {
+      console.error("Failed to set active resume:", err);
+    }
   };
 
   const activeResume = resumes.find(r => r.active);

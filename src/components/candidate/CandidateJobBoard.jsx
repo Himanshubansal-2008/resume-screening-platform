@@ -32,14 +32,22 @@ const CandidateJobBoard = ({ user, allJobs, recommendations = [], myProfile, onR
   const [selectedResumeId, setSelectedResumeId] = useState(null);
 
   useEffect(() => {
-    if (myProfile?.email) {
-      const STORAGE_KEY = `hireai_resumes_${myProfile.email}`;
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-      setResumes(stored);
-      if (stored.length > 0) {
-        setSelectedResumeId(stored[0].id);
+    const fetchResumes = async () => {
+      if (!myProfile?.email) return;
+      try {
+        const res = await fetch(`http://localhost:5001/api/candidates/${myProfile.email}/resumes`);
+        if (res.ok) {
+          const data = await res.json();
+          setResumes(data);
+          if (data.length > 0) {
+            setSelectedResumeId(data[0].id);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch resumes:", err);
       }
-    }
+    };
+    fetchResumes();
   }, [myProfile?.email]);
 
   const safeAllJobs = Array.isArray(allJobs) ? allJobs : [];

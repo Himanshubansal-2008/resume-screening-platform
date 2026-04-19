@@ -26,11 +26,18 @@ const CandidateSubmit = ({ setActiveTab, onRefresh }) => {
         return;
     }
 
-    const STORAGE_KEY = `hireai_resumes_${user?.primaryEmailAddress?.emailAddress}`;
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    if (stored.length >= 4) {
-        alert("You can store up to 4 resumes. Please delete one from your profile first.");
-        return;
+    const email = user?.primaryEmailAddress?.emailAddress;
+    if (email) {
+      try {
+        const checkRes = await fetch(`http://localhost:5001/api/candidates/${email}/resumes`);
+        const existing = await checkRes.json();
+        if (existing.length >= 4) {
+            alert("You can store up to 4 resumes. Please delete one from your profile first.");
+            return;
+        }
+      } catch (err) {
+        console.error("Failed to check resume limit:", err);
+      }
     }
 
     setUploadState('uploading');
@@ -42,6 +49,7 @@ const CandidateSubmit = ({ setActiveTab, onRefresh }) => {
     formData.append('email', user?.primaryEmailAddress?.emailAddress);
     formData.append('name', user?.fullName || "Candidate");
     formData.append('role', "Software Engineer Applicant");
+    formData.append('resumeTitle', resumeTitle.trim() !== '' ? resumeTitle.trim() : file.name);
 
     try {
       const response = await fetch('http://localhost:5001/api/candidates', {
@@ -65,19 +73,7 @@ const CandidateSubmit = ({ setActiveTab, onRefresh }) => {
           setUploadState('complete');
           setSummary(data.summary || "");
           
-          const finalStored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-          if (finalStored.length < 4) {
-            const entry = {
-              id: Date.now(),
-              name: resumeTitle.trim() !== '' ? resumeTitle.trim() : file.name,
-              date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
-              score: data.match || 0,
-              summary: data.summary || '',
-              active: finalStored.length === 0
-            };
-            const updated = finalStored.length === 0 ? [entry] : [...finalStored, { ...entry, active: false }];
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-          }
+          // Resume is now persisted by the backend directly
 
           if (onRefresh) onRefresh();
         }
