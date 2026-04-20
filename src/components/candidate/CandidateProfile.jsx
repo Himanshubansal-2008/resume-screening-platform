@@ -186,34 +186,12 @@ const CandidateProfile = ({ user, myProfile, onRefresh, setActiveTab }) => {
         </div>
       </motion.div>
 
-      {/* ── Stats Row ── */}
-      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-        className="cp-stats-row">
-        <StatCard icon={<Briefcase />} label="Applications" value={myProfile?.applications?.length || 0} color="var(--primary)" />
-        <StatCard icon={<TrendingUp />} label="Avg. Match" value={`${score}%`} color="var(--success)" />
-        <StatCard icon={<Zap />} label="Ready Status" value="Active" color="var(--accent)" />
-      </motion.div>
 
       {/* ── Main Grid ── */}
       <div className="cp-main-grid">
 
         {/* Left Column */}
         <div className="cp-column">
-          <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}
-            className="glass-card">
-            <h4 className="cp-section-title">
-              <User size={18} color="var(--primary)" /> Account Info
-            </h4>
-            <div className="cp-account-info-list">
-              <div className="cp-info-item">
-                <span className="cp-info-icon"><Mail size={15} /></span>
-                <div>
-                  <div className="cp-info-label">Email</div>
-                  <div className="cp-info-value">{email}</div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
 
           <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}
             className="glass-card">

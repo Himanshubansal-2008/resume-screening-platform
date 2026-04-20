@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Users, FileText, LayoutDashboard, Database, Search, 
   TrendingUp, CheckCircle, AlertCircle, MessageSquare, Plus,
-  ShieldCheck, HelpCircle, Cpu, ChevronRight, ClipboardList, Bot, ArrowRight, User
+  ShieldCheck, HelpCircle, Cpu, ChevronRight, ClipboardList, Bot, ArrowRight, User, Sun, Moon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from '@clerk/clerk-react';
@@ -25,28 +25,27 @@ const ADMIN_EMAILS = [
 
 const API_BASE_URL = "http://localhost:5001/api";
 
-const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candidates, jobs, onRefresh, recommendations, activeInterviewApp, setActiveInterviewApp }) => {
+const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candidates, jobs, onRefresh, recommendations, activeInterviewApp, setActiveInterviewApp, theme, onToggleTheme }) => {
   const isAdmin = role === 'admin';
   
-  // Robustly find the candidate profile for the logged-in user
   const myProfile = useMemo(() => {
     return candidates.find(c => c.email === user?.primaryEmailAddress?.emailAddress);
   }, [candidates, user]);
 
   return (
-    <div className="app-container" style={{ background: '#07070b' }}>
-      <aside className="sidebar" style={{ borderRight: '1px solid hsla(0,0%,100%,0.05)', background: '#0a0a0f' }}>
-        <div className="brand" style={{ marginBottom: '4rem', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ width: '44px', height: '44px', background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 32px -4px var(--primary-glow)' }}>
+    <div className="app-container">
+      <aside className="sidebar">
+        <div className="brand">
+          <div className="brand-icon">
             <Cpu size={24} color="white" />
           </div>
           <div>
-            <h2 className="brand-font" style={{ color: 'white', fontSize: '1.6rem', lineHeight: '1', letterSpacing: '-1px' }}>HireAI</h2>
-            <div style={{ fontSize: '0.6rem', color: 'var(--primary)', fontWeight: '900', letterSpacing: '0.15em', marginTop: '4px' }}>ENTERPRISE</div>
+            <h2 className="brand-name brand-font">HireAI</h2>
+            <div className="brand-subtitle">ENTERPRISE</div>
           </div>
         </div>
 
-        <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <nav className="sidebar-nav">
           {isAdmin ? (
             <>
               <button className={`nav-item-pro ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
@@ -59,18 +58,12 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
                 <ClipboardList size={18} /> <span>Job Descriptions</span>
               </button>
               
-              <div style={{ margin: '2rem 1rem', borderTop: '1px solid hsla(0,0%,100%,0.05)' }}></div>
-              <div style={{ padding: '0 1rem', marginBottom: '1rem', fontSize: '11px', color: 'var(--text-muted)', fontWeight: '800', letterSpacing: '0.1em' }}>INTELLIGENCE</div>
+              <div className="sidebar-separator"></div>
+              <div className="sidebar-section-title">INTELLIGENCE</div>
 
               <button 
-                className="nav-item-pro" 
+                className="nav-item-pro btn-ask-ai" 
                 onClick={() => onOpenChat()}
-                style={{ 
-                  background: 'hsla(217, 91%, 60%, 0.05)',
-                  border: '1px solid hsla(217, 91%, 60%, 0.15)',
-                  color: 'var(--primary)',
-                  fontWeight: '800'
-                }}
               >
                 <Bot size={18} /> <span>Ask HireAI Bot</span>
               </button>
@@ -92,31 +85,41 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
               <button className={`nav-item-pro ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>
                 <User size={18} /> <span>My Profile</span>
               </button>
+
+              <button
+                onClick={onToggleTheme}
+                className="theme-toggle-btn"
+              >
+                <div className={`theme-toggle-track ${theme === 'dark' ? 'dark' : ''}`}>
+                  <div className="theme-toggle-thumb" />
+                </div>
+                {theme === 'dark' ? <Moon size={15} /> : <Sun size={15} color="var(--warning)" />}
+                <span>{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
+              </button>
             </>
           )}
         </nav>
 
-        <div style={{ background: 'hsla(0,0%,100%,0.02)', padding: '12px', borderRadius: '16px', display: 'flex', alignItems: 'center', border: '1px solid hsla(0,0%,100%,0.05)' }}>
-          <UserButton showName appearance={{ elements: { userButtonOuterIdentifier: { color: 'white', fontWeight: '700', fontSize: '13px' } } }} />
+        <div className="sidebar-user-footer">
+          <UserButton showName appearance={{ elements: { userButtonOuterIdentifier: { color: 'var(--text-main)', fontWeight: '700', fontSize: '13px' } } }} />
         </div>
       </aside>
 
-      {/* ── Main Content ── */}
-      <main className="main-content" style={{ background: 'linear-gradient(180deg, #0a0a0f 0%, #07070b 100%)' }}>
-        <header style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4rem', alignItems: 'center' }}>
+      <main className="main-content">
+        <header className="main-header">
           <div>
-            <h1 style={{ fontSize: '3.5rem', color: 'white', fontWeight: '900', letterSpacing: '-2px' }}>{isAdmin ? 'Recruiter Hub' : `Hey ${user?.firstName}!`}</h1>
-            <p style={{ color: 'var(--text-dim)', marginTop: '0.5rem', fontSize: '1.1rem' }}>
+            <h1 className="header-title">{isAdmin ? 'Recruiter Hub' : `Hey ${user?.firstName}!`}</h1>
+            <p className="header-subtitle">
                 {isAdmin ? "Orchestrate your multi-dimensional hiring pipeline." : "Track your strategic application roadmap."}
             </p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '800' }}>
+          <div className="header-right">
+            <div className="status-item">
                <ShieldCheck size={16} color="var(--primary)" /> SECURE SESSION
             </div>
-            <div style={{ background: 'hsla(0,0%,100%,0.03)', padding: '8px 20px', borderRadius: '12px', border: '1px solid hsla(0,0%,100%,0.05)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div className="pulse" style={{ width: '8px', height: '8px', background: 'var(--primary)', borderRadius: '50%', boxShadow: '0 0 10px var(--primary-glow)' }}></div>
-                <span style={{ fontWeight: '900', fontSize: '0.7rem', color: 'white', letterSpacing: '0.08em' }}>STABLE MODE</span>
+            <div className="status-pill">
+                <div className="pulse-dot"></div>
+                <span className="status-pill-text">STABLE MODE</span>
             </div>
           </div>
         </header>
@@ -144,7 +147,16 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
 
 
 const App = () => {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(
+    () => sessionStorage.getItem('activeTab') || 'dashboard'
+  );
+
+  const handleSetActiveTab = (tab) => {
+    sessionStorage.setItem('activeTab', tab);
+    setActiveTab(tab);
+  };
+
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
   const [candidates, setCandidates] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
@@ -153,6 +165,13 @@ const App = () => {
   const [activeInterviewApp, setActiveInterviewApp] = useState(null);
   const { user } = useUser();
   const isAdmin = useMemo(() => ADMIN_EMAILS.includes(user?.primaryEmailAddress?.emailAddress), [user]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
 
   const fetchData = useCallback(async () => {
     if (!user) return;
@@ -166,7 +185,6 @@ const App = () => {
       setCandidates(Array.isArray(candData) ? candData : []);
       setJobs(Array.isArray(jobsData) ? jobsData : []);
 
-      // Fetch recommendations only for candidates
       if (!isAdmin) {
           const userEmail = user?.primaryEmailAddress?.emailAddress;
           const recRes = await fetch(`${API_BASE_URL}/candidates/recommendations?email=${userEmail}`);
@@ -197,15 +215,15 @@ const App = () => {
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className="login-card"
           >
-            <div style={{ width: '80px', height: '80px', background: 'var(--primary)', borderRadius: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 3rem', boxShadow: '0 20px 40px var(--primary-glow)' }}>
+            <div className="login-logo-wrapper">
                <Cpu size={42} color="white" />
             </div>
             
-            <h1 style={{ color: 'white', fontSize: '4.5rem', marginBottom: '1rem', letterSpacing: '-0.06em', fontWeight: '900' }}>
+            <h1 className="login-title brand-font">
               HireAI <span style={{ color: 'var(--primary)' }}>Portal</span>
             </h1>
             
-            <p style={{ color: 'var(--text-dim)', marginBottom: '4rem', fontSize: '1.25rem', lineHeight: '1.6', maxWidth: '440px', margin: '0 auto 4rem' }}>
+            <p className="login-subtitle">
               The world's most advanced AI-driven candidate screening and interview readiness platform.
             </p>
 
@@ -215,11 +233,11 @@ const App = () => {
               </button>
             </SignInButton>
 
-            <div style={{ marginTop: '4rem', display: 'flex', justifyContent: 'center', gap: '2rem', opacity: 0.4 }}>
-               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', fontWeight: '700', color: 'white' }}>
+            <div className="login-footer">
+               <div className="login-footer-item">
                  <CheckCircle size={14} color="var(--success)" /> Neural Extraction
                </div>
-               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', fontWeight: '700', color: 'white' }}>
+               <div className="login-footer-item">
                  <CheckCircle size={14} color="var(--success)" /> 0ms Latency
                </div>
             </div>
@@ -231,7 +249,7 @@ const App = () => {
         <DashboardShell 
           role={isAdmin ? 'admin' : 'candidate'} 
           activeTab={activeTab} 
-          setActiveTab={setActiveTab} 
+          setActiveTab={handleSetActiveTab} 
           user={user} 
           candidates={candidates}
           jobs={jobs}
@@ -240,6 +258,8 @@ const App = () => {
           onRefresh={fetchData}
           activeInterviewApp={activeInterviewApp}
           setActiveInterviewApp={setActiveInterviewApp}
+          theme={theme}
+          onToggleTheme={toggleTheme}
         />
         <AIChatbotSidebar 
           isOpen={isChatOpen} 
