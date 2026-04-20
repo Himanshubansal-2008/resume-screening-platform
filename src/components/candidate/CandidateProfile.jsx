@@ -1,33 +1,28 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import {
-  User, Mail, Calendar, Award, Code2, Briefcase, Star,
-  FileText, CheckCircle, Copy, ExternalLink, Plus,
-  BadgeCheck, TrendingUp, Zap, Shield, Hash, Clock,
-  Trash2, UploadCloud, Loader2, Cpu, AlertCircle,
+  User, Mail, Calendar, Code2, Briefcase,
+  FileText, CheckCircle, Copy, Plus,
+  BadgeCheck, TrendingUp, Zap,
+  Trash2, Loader2, Cpu, AlertCircle,
   FilePlus, Archive
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import './candidate.css';
 
 const MAX_RESUMES = 4;
 const API_BASE = 'http://localhost:5001/api';
-const STORAGE_KEY = (email) => `hireai_resumes_${email}`;
 
 /* ── Avatar ── */
 const Avatar = ({ user, size = 96 }) => {
   const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}`.toUpperCase() || '?';
   return user?.imageUrl ? (
     <img src={user.imageUrl} alt={user.fullName}
-      style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover',
-        border: '3px solid var(--primary)',
-        boxShadow: '0 0 0 4px hsla(217,91%,60%,0.15), 0 12px 40px rgba(0,0,0,0.4)' }} />
+      className="cp-avatar-img"
+      style={{ width: size, height: size }} />
   ) : (
-    <div style={{ width: size, height: size, borderRadius: '50%',
-      background: 'linear-gradient(135deg, var(--primary), var(--accent))',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: size * 0.35, fontWeight: 900, color: 'white',
-      border: '3px solid var(--primary)',
-      boxShadow: '0 0 0 4px hsla(217,91%,60%,0.15), 0 12px 40px rgba(0,0,0,0.4)' }}>
+    <div className="cp-avatar-placeholder"
+      style={{ width: size, height: size, fontSize: size * 0.35 }}>
       {initials}
     </div>
   );
@@ -35,28 +30,20 @@ const Avatar = ({ user, size = 96 }) => {
 
 /* ── Stat Card ── */
 const StatCard = ({ icon, label, value, color = 'var(--primary)' }) => (
-  <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-    borderRadius: 20, padding: '1.5rem', display: 'flex', alignItems: 'center', gap: 16,
-    backdropFilter: 'blur(20px)' }}>
-    <div style={{ width: 46, height: 46, borderRadius: 14, background: `${color}18`,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+  <div className="cp-stat-card">
+    <div className="cp-stat-icon-box" style={{ background: `${color}18` }}>
       {React.cloneElement(icon, { size: 22, color })}
     </div>
     <div>
-      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 800,
-        letterSpacing: '0.06em', textTransform: 'uppercase' }}>{label}</div>
-      <div style={{ color: 'white', fontWeight: 900, fontSize: '1.1rem', marginTop: 2 }}>{value}</div>
+      <div className="cp-stat-label">{label}</div>
+      <div className="cp-stat-value">{value}</div>
     </div>
   </div>
 );
 
 /* ── Skill Pill ── */
 const SkillPill = ({ label }) => (
-  <span style={{ padding: '5px 14px', borderRadius: 99,
-    background: 'hsla(217,91%,60%,0.08)', border: '1px solid hsla(217,91%,60%,0.2)',
-    color: 'var(--primary)', fontSize: '0.78rem', fontWeight: 700 }}>
-    {label}
-  </span>
+  <span className="cp-skill-pill">{label}</span>
 );
 
 /* ── Score Ring ── */
@@ -65,27 +52,24 @@ const ScoreRing = ({ score }) => {
   const offset = circ - (score / 100) * circ;
   const color = score >= 70 ? 'var(--success)' : score >= 50 ? 'var(--warning)' : 'var(--danger)';
   return (
-    <svg width={72} height={72} style={{ transform: 'rotate(-90deg)', flexShrink: 0 }}>
-      <circle cx={36} cy={36} r={r} fill="none" stroke="hsla(255,100%,100%,0.05)" strokeWidth={6} />
-      <circle cx={36} cy={36} r={r} fill="none" stroke={color} strokeWidth={6}
-        strokeDasharray={circ} strokeDashoffset={offset}
-        strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s ease' }} />
-      <text x={36} y={36} fill="white" textAnchor="middle" dominantBaseline="central"
-        style={{ transform: 'rotate(90deg)', transformOrigin: '36px 36px',
-          fontSize: '0.75rem', fontWeight: 900, fontFamily: 'Outfit, sans-serif' }}>
-        {score}%
-      </text>
-    </svg>
+    <div className="cp-score-ring-wrapper">
+      <svg width={72} height={72} className="cp-score-ring">
+        <circle cx={36} cy={36} r={r} fill="none" stroke="hsla(255,100%,100%,0.05)" strokeWidth={6} />
+        <circle cx={36} cy={36} r={r} fill="none" stroke={color} strokeWidth={6}
+          strokeDasharray={circ} strokeDashoffset={offset}
+          strokeLinecap="round"
+          style={{ transition: 'stroke-dashoffset 1s ease', transform: 'rotate(-90deg)', transformOrigin: 'center' }} />
+      </svg>
+      <div className="cp-ring-text-overlay">{score}%</div>
+    </div>
   );
 };
 
 /* ═══════════════════════════════════════════ */
 const CandidateProfile = ({ user, myProfile, onRefresh, setActiveTab }) => {
   const [copied, setCopied] = useState(false);
-
-  /* ── Resume Vault state ── */
-  const [resumes, setResumes] = useState([]);        // [{id, name, date, score, summary, active}]
-  const [uploadState, setUploadState] = useState('idle'); // idle | uploading | error
+  const [resumes, setResumes] = useState([]);
+  const [uploadState, setUploadState] = useState('idle');
   const [uploadMsg, setUploadMsg] = useState('');
   const fileInputRef = useRef(null);
 
@@ -96,33 +80,21 @@ const CandidateProfile = ({ user, myProfile, onRefresh, setActiveTab }) => {
     : '—';
   const score = myProfile?.match ?? 0;
   const skills = myProfile?.skills ?? [];
-  const experience = myProfile?.experience ?? [];
-  const education = myProfile?.education ?? [];
 
-  /* ── Fetch vault from backend API ── */
   const fetchResumes = async () => {
     if (!email || email === '—') return;
     try {
       const res = await fetch(`${API_BASE}/candidates/${email}/resumes`);
-      if (res.ok) {
-        const data = await res.json();
-        setResumes(data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch resumes:", err);
-    }
+      if (res.ok) setResumes(await res.json());
+    } catch (err) { console.error("Failed to fetch resumes:", err); }
   };
 
-  useEffect(() => {
-    fetchResumes();
-  }, [email]);
+  useEffect(() => { fetchResumes(); }, [email]);
 
-  /* ── Upload handler ── */
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    e.target.value = '';          // reset so same file can re-trigger
-
+    e.target.value = '';
     if (file.type !== 'application/pdf') {
       setUploadMsg('Only PDF files are supported.');
       setUploadState('error');
@@ -135,22 +107,18 @@ const CandidateProfile = ({ user, myProfile, onRefresh, setActiveTab }) => {
       setTimeout(() => setUploadState('idle'), 3000);
       return;
     }
-
     setUploadState('uploading');
     setUploadMsg('');
-
     const formData = new FormData();
     formData.append('resumePdf', file);
     formData.append('email', email);
     formData.append('name', fullName || 'Candidate');
     formData.append('role', 'Software Engineer Applicant');
     formData.append('resumeTitle', file.name);
-
     try {
       const res = await fetch(`${API_BASE}/candidates`, { method: 'POST', body: formData });
       if (!res.ok) throw new Error('Upload failed');
       await res.json();
-
       await fetchResumes();
       if (onRefresh) onRefresh();
       setUploadState('idle');
@@ -166,18 +134,14 @@ const CandidateProfile = ({ user, myProfile, onRefresh, setActiveTab }) => {
     try {
       await fetch(`${API_BASE}/resumes/${id}`, { method: 'DELETE' });
       await fetchResumes();
-    } catch (err) {
-      console.error("Failed to delete resume:", err);
-    }
+    } catch (err) { console.error("Failed to delete resume:", err); }
   };
 
   const setActive = async (id) => {
     try {
       await fetch(`${API_BASE}/resumes/${id}/active`, { method: 'PUT' });
       await fetchResumes();
-    } catch (err) {
-      console.error("Failed to set active resume:", err);
-    }
+    } catch (err) { console.error("Failed to set active resume:", err); }
   };
 
   const activeResume = resumes.find(r => r.active);
@@ -188,270 +152,194 @@ const CandidateProfile = ({ user, myProfile, onRefresh, setActiveTab }) => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  /* ══════════════════════════ RENDER ══════════════════════════ */
   return (
-    <div className="fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+    <div className="fadeIn cp-container">
 
       {/* ── Hero Banner ── */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-        className="glass-card"
-        style={{ background: 'linear-gradient(135deg, hsla(217,91%,60%,0.08) 0%, hsla(260,80%,70%,0.05) 100%)',
-          borderTop: '3px solid var(--primary)', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: -60, right: -60, width: 260, height: 260,
-          background: 'var(--primary-glow)', filter: 'blur(80px)', borderRadius: '50%',
-          opacity: 0.25, pointerEvents: 'none' }} />
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '2.5rem', position: 'relative', zIndex: 1 }}>
+        className="glass-card cp-hero-banner">
+        <div className="cp-hero-glow" />
+        <div className="cp-hero-content">
           <Avatar user={user} size={100} />
-          <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-              <h2 style={{ fontSize: '2rem', color: 'white', letterSpacing: '-0.04em' }}>{fullName}</h2>
+          <div className="cp-hero-info">
+            <div className="cp-hero-name-row">
+              <h2 className="cp-hero-name">{fullName}</h2>
               <BadgeCheck size={22} color="var(--primary)" />
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-dim)', fontSize: '0.9rem', marginBottom: 4 }}>
+            <div className="cp-hero-email-row">
               <Mail size={15} /><span>{email}</span>
               <button onClick={copyEmail} title="Copy email"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px',
-                  borderRadius: 6, color: copied ? 'var(--success)' : 'var(--text-muted)', transition: 'color 0.2s' }}>
+                className={`cp-copy-btn ${copied ? 'copied' : ''}`}>
                 {copied ? <CheckCircle size={14} /> : <Copy size={14} />}
               </button>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+            <div className="cp-hero-joined-row">
               <Calendar size={13} /><span>Member since {joinedAt}</span>
             </div>
           </div>
-          <div style={{ textAlign: 'center', padding: '1.2rem 2rem',
-            background: 'hsla(217,91%,60%,0.08)', borderRadius: 20, border: '1px solid hsla(217,91%,60%,0.2)' }}>
-            <div style={{ fontSize: '2.8rem', fontWeight: 900, color: 'white', lineHeight: 1 }}>
-              {score}<span style={{ color: 'var(--primary)', fontSize: '1.4rem' }}>%</span>
+          <div className="cp-hero-score-box">
+            <div className="cp-hero-score-value">
+              {score}<span className="cp-hero-score-unit">%</span>
             </div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800, letterSpacing: '0.08em', marginTop: 4 }}>MATCH SCORE</div>
+            <div className="cp-hero-score-label">MATCH SCORE</div>
           </div>
         </div>
       </motion.div>
 
+      {/* ── Stats Row ── */}
+      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+        className="cp-stats-row">
+        <StatCard icon={<Briefcase />} label="Applications" value={myProfile?.applications?.length || 0} color="var(--primary)" />
+        <StatCard icon={<TrendingUp />} label="Avg. Match" value={`${score}%`} color="var(--success)" />
+        <StatCard icon={<Zap />} label="Ready Status" value="Active" color="var(--accent)" />
+      </motion.div>
 
       {/* ── Main Grid ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1.9fr', gap: '2rem' }}>
+      <div className="cp-main-grid">
 
-        {/* ── Left Column ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-
-          {/* Account Info */}
+        {/* Left Column */}
+        <div className="cp-column">
           <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}
             className="glass-card">
-            <h4 style={{ color: 'white', display: 'flex', alignItems: 'center', gap: 10, marginBottom: '1.8rem', fontSize: '1.05rem' }}>
+            <h4 className="cp-section-title">
               <User size={18} color="var(--primary)" /> Account Info
             </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ color: 'var(--text-muted)' }}><Mail size={15} /></span>
+            <div className="cp-account-info-list">
+              <div className="cp-info-item">
+                <span className="cp-info-icon"><Mail size={15} /></span>
                 <div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email</div>
-                  <div style={{ color: 'var(--text-main)', fontSize: '0.88rem', fontWeight: 600, marginTop: 1 }}>{email}</div>
+                  <div className="cp-info-label">Email</div>
+                  <div className="cp-info-value">{email}</div>
                 </div>
               </div>
             </div>
           </motion.div>
 
-          {/* Skills */}
           <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}
             className="glass-card">
-            <h4 style={{ color: 'white', display: 'flex', alignItems: 'center', gap: 10, marginBottom: '1.5rem', fontSize: '1.05rem' }}>
+            <h4 className="cp-section-title">
               <Code2 size={18} color="var(--accent)" /> Detected Skills
             </h4>
             {skills.length > 0 ? (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
+              <div className="cp-skills-container">
                 {skills.map((s, i) => <SkillPill key={i} label={s} />)}
               </div>
             ) : (
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: 1.7 }}>
+              <p className="cp-skills-empty">
                 No skills extracted yet. Upload a resume below to get AI-powered skill detection.
               </p>
             )}
           </motion.div>
         </div>
 
-        {/* ── Right Column ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-
-          {/* ══ RESUME VAULT ══ */}
+        {/* Right Column */}
+        <div className="cp-column">
           <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}
-            className="glass-card" style={{ borderTop: '3px solid var(--accent)' }}>
+            className="glass-card cp-vault-card">
 
-            {/* Vault header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 14,
-                  background: 'linear-gradient(135deg, hsla(260,80%,70%,0.2), hsla(217,91%,60%,0.15))',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="cp-vault-header">
+              <div className="cp-vault-header-left">
+                <div className="cp-vault-icon-wrapper">
                   <Archive size={22} color="var(--accent)" />
                 </div>
                 <div>
-                  <h3 style={{ color: 'white', fontSize: '1.2rem', fontWeight: 900 }}>Resume Vault</h3>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: 2 }}>
-                    {resumes.length} of {MAX_RESUMES} slots used
-                  </p>
+                  <h3 className="cp-vault-title">Resume Vault</h3>
+                  <p className="cp-vault-subtitle">{resumes.length} of {MAX_RESUMES} slots used</p>
                 </div>
               </div>
-
-              {/* Upload button */}
-              <div>
-                <button
-                  onClick={() => typeof setActiveTab === 'function' && setActiveTab('submit')}
-                  disabled={resumes.length >= MAX_RESUMES}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '9px 18px', borderRadius: 14,
-                    background: resumes.length >= MAX_RESUMES ? 'hsla(255,100%,100%,0.04)' : 'var(--primary)',
-                    color: resumes.length >= MAX_RESUMES ? 'var(--text-muted)' : 'white',
-                    border: 'none', fontWeight: 800, fontSize: '0.82rem',
-                    cursor: resumes.length >= MAX_RESUMES ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.2s'
-                  }}>
-                  <><Plus size={15} /> Add Resume</>
-                </button>
-              </div>
+              <button
+                onClick={() => typeof setActiveTab === 'function' && setActiveTab('submit')}
+                disabled={resumes.length >= MAX_RESUMES}
+                className={`cp-btn-add-resume ${resumes.length >= MAX_RESUMES ? 'disabled' : 'enabled'}`}>
+                <Plus size={15} /> Add Resume
+              </button>
             </div>
 
-            {/* Upload error banner */}
             <AnimatePresence>
               {uploadState === 'error' && (
                 <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                  style={{ marginBottom: '1.5rem', padding: '0.9rem 1.2rem', borderRadius: 14,
-                    background: 'hsla(0,85%,60%,0.08)', border: '1px solid hsla(0,85%,60%,0.2)',
-                    display: 'flex', alignItems: 'center', gap: 10, color: 'var(--danger)', fontSize: '0.84rem', fontWeight: 700 }}>
+                  className="cp-error-banner">
                   <AlertCircle size={16} /> {uploadMsg}
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Uploading progress */}
             <AnimatePresence>
               {uploadState === 'uploading' && (
                 <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                  style={{ marginBottom: '1.5rem', padding: '1rem 1.2rem', borderRadius: 14,
-                    background: 'hsla(217,91%,60%,0.06)', border: '1px solid hsla(217,91%,60%,0.15)',
-                    display: 'flex', alignItems: 'center', gap: 12 }}>
+                  className="cp-upload-progress">
                   <Cpu size={18} color="var(--primary)" />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ color: 'white', fontWeight: 800, fontSize: '0.88rem' }}>AI is analyzing your resume…</div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 2 }}>Parsing skills, experience, and fit score</div>
+                  <div className="cp-upload-progress-info">
+                    <div className="cp-progress-title">AI is analyzing your resume…</div>
+                    <div className="cp-progress-subtitle">Parsing skills, experience, and fit score</div>
                   </div>
-                  <Loader2 size={18} color="var(--primary)" className="spin" />
+                  <Loader2 size={18} color="var(--primary)" className="cp-spin" />
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Resume list */}
             {resumes.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2.5rem 1rem',
-                border: '1.5px dashed hsla(260,80%,70%,0.2)', borderRadius: 20 }}>
-                <FilePlus size={36} color="hsla(260,80%,70%,0.4)" style={{ marginBottom: 12 }} />
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: 1.7 }}>
+              <div className="cp-vault-empty">
+                <FilePlus size={36} color="hsla(260,80%,70%,0.4)" className="cp-vault-empty-icon" />
+                <p className="cp-vault-empty-text">
                   No resumes yet.<br />
-                  Click <strong style={{ color: 'var(--primary)' }}>Add Resume</strong> to upload your first PDF (max {MAX_RESUMES}).
+                  Click <strong className="cp-primary-text">Add Resume</strong> to upload your first PDF (max {MAX_RESUMES}).
                 </p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+              <div className="cp-resume-list">
                 {resumes.map((r, idx) => (
                   <AnimatePresence key={r.id}>
                     <motion.div
                       initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: idx * 0.04 }}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 14,
-                        padding: '1rem 1.25rem', borderRadius: 16,
-                        background: r.active ? 'hsla(217,91%,60%,0.08)' : 'hsla(255,100%,100%,0.02)',
-                        border: r.active ? '1.5px solid hsla(217,91%,60%,0.3)' : '1px solid var(--card-border)',
-                        transition: 'all 0.2s'
-                      }}>
-
-                      {/* Score ring */}
+                      className={`cp-resume-item ${r.active ? 'active' : 'inactive'}`}>
                       <ScoreRing score={r.score} />
-
-                      {/* Meta */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ color: 'white', fontWeight: 800, fontSize: '0.9rem',
-                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {r.name}
-                          </div>
-                          {r.active && (
-                            <span style={{ padding: '2px 8px', borderRadius: 99, fontSize: '0.62rem',
-                              fontWeight: 900, background: 'hsla(217,91%,60%,0.15)',
-                              color: 'var(--primary)', border: '1px solid hsla(217,91%,60%,0.25)',
-                              letterSpacing: '0.05em', flexShrink: 0 }}>
-                              ACTIVE
-                            </span>
-                          )}
+                      <div className="cp-resume-meta">
+                        <div className="cp-resume-name-row">
+                          <div className="cp-resume-name">{r.name}</div>
+                          {r.active && <span className="cp-active-badge">ACTIVE</span>}
                         </div>
-                        <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 3 }}>
-                          Uploaded {r.date} · AI Score: <span style={{ color: 'white', fontWeight: 700 }}>{r.score}%</span>
+                        <div className="cp-resume-info-text">
+                          Uploaded {r.date} · AI Score: <span className="cp-resume-score-highlight">{r.score}%</span>
                         </div>
                       </div>
-
-                      {/* Actions */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                      <div className="cp-resume-actions">
                         {!r.active && (
-                          <button onClick={() => setActive(r.id)} title="Set as active"
-                            style={{ display: 'flex', alignItems: 'center', gap: 5,
-                              padding: '5px 12px', borderRadius: 10,
-                              background: 'hsla(217,91%,60%,0.08)', border: '1px solid hsla(217,91%,60%,0.2)',
-                              color: 'var(--primary)', fontSize: '0.72rem', fontWeight: 800, cursor: 'pointer' }}>
+                          <button onClick={() => setActive(r.id)} title="Set as active" className="cp-btn-set-active">
                             <CheckCircle size={12} /> Set Active
                           </button>
                         )}
-                        <button onClick={() => deleteResume(r.id)} title="Delete resume"
-                          style={{ width: 32, height: 32, borderRadius: 10, border: 'none',
-                            background: 'hsla(0,85%,60%,0.08)', color: 'var(--danger)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer', transition: 'background 0.2s' }}
-                          onMouseOver={e => e.currentTarget.style.background = 'hsla(0,85%,60%,0.18)'}
-                          onMouseOut={e => e.currentTarget.style.background = 'hsla(0,85%,60%,0.08)'}>
+                        <button onClick={() => deleteResume(r.id)} title="Delete resume" className="cp-btn-delete">
                           <Trash2 size={14} />
                         </button>
                       </div>
                     </motion.div>
                   </AnimatePresence>
                 ))}
-
-                {/* Slot indicator */}
                 {resumes.length < MAX_RESUMES && (
-                  <div style={{ display: 'flex', gap: 6, paddingTop: 4 }}>
+                  <div className="cp-slots-indicator">
                     {Array.from({ length: MAX_RESUMES }).map((_, i) => (
-                      <div key={i} style={{
-                        height: 4, flex: 1, borderRadius: 99,
-                        background: i < resumes.length ? 'var(--primary)' : 'hsla(255,100%,100%,0.06)',
-                        transition: 'background 0.3s'
-                      }} />
+                      <div key={i} className={`cp-slot-dot ${i < resumes.length ? 'filled' : ''}`} />
                     ))}
                   </div>
                 )}
               </div>
             )}
 
-            {/* Active resume summary */}
             {activeResume?.summary && (
-              <div style={{ marginTop: '1.5rem', padding: '1.1rem 1.25rem', borderRadius: 16,
-                background: 'hsla(217,91%,60%,0.04)', border: '1px solid hsla(217,91%,60%,0.1)' }}>
-                <div style={{ fontSize: '0.68rem', color: 'var(--primary)', fontWeight: 900,
-                  letterSpacing: '0.08em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div className="cp-active-summary-box">
+                <div className="cp-summary-header">
                   <Zap size={12} /> ACTIVE RESUME · AI SUMMARY
                 </div>
-                <p style={{ color: 'var(--text-dim)', fontSize: '0.83rem', lineHeight: 1.8 }}>
+                <p className="cp-summary-text">
                   {activeResume.summary.slice(0, 280)}{activeResume.summary.length > 280 ? '…' : ''}
                 </p>
               </div>
             )}
           </motion.div>
-
         </div>
       </div>
-
-      {/* Spin keyframe */}
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } .spin { animation: spin 1s linear infinite; }`}</style>
     </div>
   );
 };
