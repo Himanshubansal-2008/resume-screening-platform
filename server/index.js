@@ -79,7 +79,11 @@ function regexExtractResume(text, role) {
         detailedAnalysis: {
             technicalDeepDive: { skills, count: skills.length },
             experienceArchitecture: { score },
-            culturalCalibration: { score: 70 }
+            culturalCalibration: { score: 70 },
+            tips: [
+                { title: "Quantify Impact", body: "Add quantifiable metrics to your recent roles.", type: "tip" },
+                { title: "Expand Skills", body: "Ensure all relevant tools are mentioned.", type: "warning" }
+            ]
         },
         reason: `Matched ${skills.length} technical skills for ${role}.`,
         _provider: 'regex-fallback'
@@ -106,7 +110,7 @@ class GroqProvider {
     async analyzeResume(text, role) {
         const prompt = `Analyze this resume for the role of ${role}. Resume: ${text.slice(0, 6000)}
 Return ONLY valid JSON, no markdown:
-{"score":number,"skills":[],"summary":"two paragraphs","detailedAnalysis":{"technicalDeepDive":{},"experienceArchitecture":{},"culturalCalibration":{}},"reason":"short string"}`;
+{"score":number,"skills":[],"summary":"two paragraphs","detailedAnalysis":{"technicalDeepDive":{},"experienceArchitecture":{},"culturalCalibration":{},"tips":[{"title":"string","body":"string","type":"critical|warning|success|tip"}]},"reason":"short string"}`;
         return cleanJsonResponse(await this.call(prompt));
     }
 
@@ -115,6 +119,17 @@ Return ONLY valid JSON, no markdown:
 Return ONLY valid JSON, no markdown:
 {"title":"","department":"","location":"","type":"","skills":[],"description":"","responsibilities":"","requirements":"","bonusPoints":"","benefits":"","interviewProcess":"","culture":""}`;
         return cleanJsonResponse(await this.call(prompt));
+    }
+
+    async generateInterviewChat(messages) {
+        if (!this.groq) throw new Error("No Groq API key configured");
+        const completion = await this.groq.chat.completions.create({
+            model: "llama-3.3-70b-versatile",
+            messages: messages,
+            temperature: 0.7,
+            max_tokens: 1000
+        });
+        return completion.choices[0]?.message?.content || '';
     }
 }
 
@@ -138,7 +153,7 @@ class GeminiProvider {
         const prompt = `Analyze this candidate's resume for the role of ${role}.
 Resume Text: ${text.slice(0, 8000)}
 Return a valid JSON object WITH NO MARKDOWN BLOCKS:
-{"score":number(0-100),"skills":[],"summary":"Exactly two paragraphs.","detailedAnalysis":{"technicalDeepDive":{},"experienceArchitecture":{},"culturalCalibration":{}},"reason":"short summary"}`;
+{"score":number(0-100),"skills":[],"summary":"Exactly two paragraphs.","detailedAnalysis":{"technicalDeepDive":{},"experienceArchitecture":{},"culturalCalibration":{},"tips":[{"title":"short title","body":"detailed actionable tip","type":"critical|warning|success|tip"}]},"reason":"short summary"}`;
         const result = await model.generateContent(prompt);
         return cleanJsonResponse(result.response.text());
     }
@@ -209,6 +224,19 @@ const universalAI = {
         // Final fallback: Regex
         console.log('[AI] Using regex fallback for JD...');
         return regexExtractJD(text);
+    },
+
+    async generateInterviewChat(messages) {
+        try {
+            console.log('[AI] Trying Groq for Interview...');
+            const result = await groqProvider.generateInterviewChat(messages);
+            console.log('[AI] ✓ Groq Interview succeeded');
+            return { text: result, _provider: 'groq' };
+        } catch (e) {
+            console.warn('[AI] Groq Interview failed:', e.message.slice(0, 80));
+        }
+
+        return { text: "I am experiencing network latency. Could you elaborate on your previous point?", _provider: 'fallback' };
     }
 };
 
@@ -222,11 +250,22 @@ app.get('/api/candidates', async (req, res) => {
     try {
         const candidates = await prisma.candidate.findMany({ 
             orderBy: { match: 'desc' },
-            include: { applications: true }
+            include: { applications: { include: { job: true } } }
         });
         res.json(candidates);
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+});
+
+// 1.5 Interview Endpoint
+app.post('/api/interview/chat', async (req, res) => {
+    try {
+        const { messages } = req.body;
+        const response = await universalAI.generateInterviewChat(messages);
+        res.json(response);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 
@@ -246,7 +285,7 @@ app.get('/api/jobs', async (req, res) => {
 // 2.5 Applications
 app.post('/api/applications', async (req, res) => {
     try {
-        const { candidateEmail, jobId } = req.body;
+        const { candidateEmail, jobId, resumeName, resumeScore, resumeSummary, resumeSkills } = req.body;
         const candidate = await prisma.candidate.findUnique({ where: { email: candidateEmail } });
         if (!candidate) return res.status(404).json({ error: 'Candidate not found' });
 
@@ -254,6 +293,10 @@ app.post('/api/applications', async (req, res) => {
             data: {
                 candidateId: candidate.id,
                 jobId: parseInt(jobId),
+                resumeName: resumeName || null,
+                resumeScore: resumeScore || null,
+                resumeSummary: resumeSummary || null,
+                resumeSkills: resumeSkills || []
             }
         });
         res.json(application);
@@ -284,13 +327,15 @@ app.delete('/api/applications/:candidateEmail/:jobId', async (req, res) => {
 // 3. Resume Upload (GEMINI POWERED)
 app.post('/api/candidates', upload.single('resumePdf'), async (req, res) => {
     try {
-        const { email, name, role } = req.body;
+        const { email, name, role, resumeTitle } = req.body;
         if (!email) return res.status(400).json({ error: "Email is required" });
 
         let extractedText = "No resume text found.";
+        let fileName = "Resume.pdf";
         if (req.file) {
             const pdfData = await pdf(req.file.buffer);
             extractedText = pdfData.text;
+            fileName = req.file.originalname || "Resume.pdf";
         }
 
         console.log(`[Neural Engine] Analyzing resume for ${email}...`);
@@ -321,9 +366,64 @@ app.post('/api/candidates', upload.single('resumePdf'), async (req, res) => {
             }
         });
 
-        res.json(candidate);
+        // Add Resume to DB
+        const existingResumes = await prisma.resume.count({ where: { candidateId: candidate.id } });
+        const resumeRecord = await prisma.resume.create({
+            data: {
+                candidateId: candidate.id,
+                name: resumeTitle || fileName,
+                score: ai.score,
+                summary: ai.summary || '',
+                active: existingResumes === 0
+            }
+        });
+
+        res.json({ ...candidate, addedResume: resumeRecord });
     } catch (error) {
         console.error("Gemini Error:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 3.5 Resume Management Endpoints
+app.get('/api/candidates/:email/resumes', async (req, res) => {
+    try {
+        const candidate = await prisma.candidate.findUnique({ where: { email: req.params.email } });
+        if (!candidate) return res.json([]);
+        const resumes = await prisma.resume.findMany({ where: { candidateId: candidate.id }, orderBy: { createdAt: 'desc' } });
+        res.json(resumes.map(r => ({ ...r, date: new Date(r.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) })));
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/api/resumes/:id', async (req, res) => {
+    try {
+        await prisma.resume.delete({ where: { id: parseInt(req.params.id) } });
+        res.json({ message: "Resume deleted" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.put('/api/resumes/:id/active', async (req, res) => {
+    try {
+        const resumeId = parseInt(req.params.id);
+        const resume = await prisma.resume.findUnique({ where: { id: resumeId } });
+        if (!resume) return res.status(404).json({ error: "Not found" });
+        
+        await prisma.$transaction([
+            prisma.resume.updateMany({
+                where: { candidateId: resume.candidateId },
+                data: { active: false }
+            }),
+            prisma.resume.update({
+                where: { id: resumeId },
+                data: { active: true }
+            })
+        ]);
+        res.json({ message: "Resume activated" });
+    } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });

@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const MAX_RESUMES = 5;
+const MAX_RESUMES = 4;
 const API_BASE = 'http://localhost:5001/api';
 const STORAGE_KEY = (email) => `hireai_resumes_${email}`;
 
@@ -80,7 +80,7 @@ const ScoreRing = ({ score }) => {
 };
 
 /* ═══════════════════════════════════════════ */
-const CandidateProfile = ({ user, myProfile, onRefresh }) => {
+const CandidateProfile = ({ user, myProfile, onRefresh, setActiveTab }) => {
   const [copied, setCopied] = useState(false);
 
   /* ── Resume Vault state ── */
@@ -99,19 +99,23 @@ const CandidateProfile = ({ user, myProfile, onRefresh }) => {
   const experience = myProfile?.experience ?? [];
   const education = myProfile?.education ?? [];
 
-  /* ── Load vault from localStorage ── */
-  useEffect(() => {
+  /* ── Fetch vault from backend API ── */
+  const fetchResumes = async () => {
     if (!email || email === '—') return;
     try {
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY(email)) || '[]');
-      setResumes(stored);
-    } catch { setResumes([]); }
-  }, [email]);
-
-  const saveVault = (updated) => {
-    setResumes(updated);
-    localStorage.setItem(STORAGE_KEY(email), JSON.stringify(updated));
+      const res = await fetch(`${API_BASE}/candidates/${email}/resumes`);
+      if (res.ok) {
+        const data = await res.json();
+        setResumes(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch resumes:", err);
+    }
   };
+
+  useEffect(() => {
+    fetchResumes();
+  }, [email]);
 
   /* ── Upload handler ── */
   const handleFileChange = async (e) => {
@@ -140,26 +144,14 @@ const CandidateProfile = ({ user, myProfile, onRefresh }) => {
     formData.append('email', email);
     formData.append('name', fullName || 'Candidate');
     formData.append('role', 'Software Engineer Applicant');
+    formData.append('resumeTitle', file.name);
 
     try {
       const res = await fetch(`${API_BASE}/candidates`, { method: 'POST', body: formData });
       if (!res.ok) throw new Error('Upload failed');
-      const data = await res.json();
+      await res.json();
 
-      const entry = {
-        id: Date.now(),
-        name: file.name,
-        date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
-        score: data.match ?? 0,
-        summary: data.summary ?? '',
-        active: resumes.length === 0   // first upload = active by default
-      };
-
-      // Deactivate others if this is now active
-      const updated = resumes.length === 0
-        ? [entry]
-        : [...resumes, { ...entry, active: false }];
-      saveVault(updated);
+      await fetchResumes();
       if (onRefresh) onRefresh();
       setUploadState('idle');
     } catch (err) {
@@ -170,18 +162,22 @@ const CandidateProfile = ({ user, myProfile, onRefresh }) => {
     }
   };
 
-  const deleteResume = (id) => {
-    const updated = resumes.filter(r => r.id !== id);
-    // If we deleted the active one, make the first remaining active
-    if (updated.length > 0 && !updated.some(r => r.active)) {
-      updated[0].active = true;
+  const deleteResume = async (id) => {
+    try {
+      await fetch(`${API_BASE}/resumes/${id}`, { method: 'DELETE' });
+      await fetchResumes();
+    } catch (err) {
+      console.error("Failed to delete resume:", err);
     }
-    saveVault(updated);
   };
 
-  const setActive = (id) => {
-    const updated = resumes.map(r => ({ ...r, active: r.id === id }));
-    saveVault(updated);
+  const setActive = async (id) => {
+    try {
+      await fetch(`${API_BASE}/resumes/${id}/active`, { method: 'PUT' });
+      await fetchResumes();
+    } catch (err) {
+      console.error("Failed to set active resume:", err);
+    }
   };
 
   const activeResume = resumes.find(r => r.active);
@@ -301,23 +297,19 @@ const CandidateProfile = ({ user, myProfile, onRefresh }) => {
 
               {/* Upload button */}
               <div>
-                <input type="file" ref={fileInputRef} accept="application/pdf"
-                  onChange={handleFileChange} style={{ display: 'none' }} />
                 <button
-                  onClick={() => resumes.length < MAX_RESUMES && uploadState === 'idle' && fileInputRef.current?.click()}
-                  disabled={resumes.length >= MAX_RESUMES || uploadState === 'uploading'}
+                  onClick={() => typeof setActiveTab === 'function' && setActiveTab('submit')}
+                  disabled={resumes.length >= MAX_RESUMES}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '9px 18px', borderRadius: 14,
                     background: resumes.length >= MAX_RESUMES ? 'hsla(255,100%,100%,0.04)' : 'var(--primary)',
                     color: resumes.length >= MAX_RESUMES ? 'var(--text-muted)' : 'white',
                     border: 'none', fontWeight: 800, fontSize: '0.82rem',
-                    cursor: resumes.length >= MAX_RESUMES || uploadState === 'uploading' ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.2s', opacity: uploadState === 'uploading' ? 0.7 : 1
+                    cursor: resumes.length >= MAX_RESUMES ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s'
                   }}>
-                  {uploadState === 'uploading'
-                    ? <><Loader2 size={15} className="spin" /> Analyzing…</>
-                    : <><Plus size={15} /> Add Resume</>}
+                  <><Plus size={15} /> Add Resume</>
                 </button>
               </div>
             </div>

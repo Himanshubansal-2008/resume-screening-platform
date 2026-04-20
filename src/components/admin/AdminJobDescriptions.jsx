@@ -205,6 +205,44 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
                                 <div className="pro-section-label text-success">OFFERING PERKS</div>
                                 <p className="text-dim-600 text-sm leading-relaxed">{job.benefits || 'Standard reward structure.'}</p>
                             </div>
+                            {/* Active Applicants Panel */}
+                            {job.applications && job.applications.length > 0 && (
+                                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.75rem', borderRadius: '22px', border: '1px dashed var(--card-border)' }}>
+                                    <div style={{ color: '#fff', fontWeight: '900', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Users size={16} color="var(--primary)" /> Active Applicants
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        {job.applications.map(app => (
+                                            <div key={app.id} 
+                                                 onClick={(e) => { 
+                                                    e.stopPropagation(); 
+                                                    setSelectedCandidateForProfile({
+                                                        ...app.candidate,
+                                                        match: app.resumeScore || app.candidate?.match,
+                                                        summary: app.resumeSummary || app.candidate?.summary,
+                                                        skills: app.resumeSkills?.length > 0 ? app.resumeSkills : app.candidate?.skills,
+                                                        appliedResumeTitle: app.resumeName || null
+                                                    }); 
+                                                 }}
+                                                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-primary)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--card-border)', cursor: 'pointer', transition: 'all 0.2s' }}
+                                                 className="candidate-row-hover"
+                                            >
+                                                <div>
+                                                    <span style={{ color: 'white', fontWeight: '700', fontSize: '0.95rem' }}>{app.candidate?.name}</span>
+                                                    {app.resumeName && <span style={{ marginLeft: '8px', padding: '2px 6px', background: 'hsla(217, 91%, 60%, 0.1)', color: 'var(--primary)', fontSize: '0.65rem', borderRadius: '6px', fontWeight: '800' }}>{app.resumeName}</span>}
+                                                    <div style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>{app.candidate?.email}</div>
+                                                </div>
+                                                <div style={{ textAlign: 'right' }}>
+                                                    <span style={{ background: (app.resumeScore || app.candidate?.match) > 80 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.05)', color: (app.resumeScore || app.candidate?.match) > 80 ? '#10b981' : 'var(--text-dim)', padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '800' }}>
+                                                        {app.resumeScore || app.candidate?.match}% Match
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                         </div>
                     </motion.div>
                 )}

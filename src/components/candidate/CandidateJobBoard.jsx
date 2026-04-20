@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Briefcase, MapPin, DollarSign, Sparkles, ChevronRight, CheckCircle2, Search, Zap, Send, Users, Globe, Gift } from 'lucide-react';
+import { Briefcase, MapPin, DollarSign, Sparkles, ChevronRight, CheckCircle2, Search, Zap, Send, Users, Globe, Gift, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const formatTimeAgo = (dateString) => {
@@ -27,6 +27,28 @@ const CandidateJobBoard = ({ user, allJobs, recommendations = [], myProfile, onR
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState(null);
   const [processingId, setProcessingId] = useState(null);
+  const [applyingJobId, setApplyingJobId] = useState(null);
+  const [resumes, setResumes] = useState([]);
+  const [selectedResumeId, setSelectedResumeId] = useState(null);
+
+  useEffect(() => {
+    const fetchResumes = async () => {
+      if (!myProfile?.email) return;
+      try {
+        const res = await fetch(`http://localhost:5001/api/candidates/${myProfile.email}/resumes`);
+        if (res.ok) {
+          const data = await res.json();
+          setResumes(data);
+          if (data.length > 0) {
+            setSelectedResumeId(data[0].id);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch resumes:", err);
+      }
+    };
+    fetchResumes();
+  }, [myProfile?.email]);
 
   const safeAllJobs = Array.isArray(allJobs) ? allJobs : [];
   const departments = ['All', ...new Set(safeAllJobs.map(j => j.department))];
@@ -75,18 +97,40 @@ const CandidateJobBoard = ({ user, allJobs, recommendations = [], myProfile, onR
        return;
     }
 
-    setProcessingId(jobId);
+    if (resumes.length === 0) {
+       alert("Please upload at least one resume to apply for jobs.");
+       if (setActiveTab) setActiveTab('submit');
+       return;
+    }
+
+    setApplyingJobId(jobId);
+  };
+
+  const submitApplication = async () => {
+    const selectedResume = resumes.find(r => r.id === selectedResumeId);
+    if (!selectedResume) return;
+
+    setProcessingId(applyingJobId);
     try {
+        const payload = {
+            candidateEmail: myProfile.email,
+            jobId: applyingJobId,
+            resumeName: selectedResume.name,
+            resumeScore: selectedResume.score,
+            resumeSummary: selectedResume.summary,
+            resumeSkills: myProfile.skills || []
+        };
         const res = await fetch('http://localhost:5001/api/applications', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ candidateEmail: myProfile.email, jobId })
+            body: JSON.stringify(payload)
         });
         if (res.ok && onRefresh) await onRefresh();
     } catch(err) {
         console.error("Apply failed", err);
     } finally {
         setProcessingId(null);
+        setApplyingJobId(null);
     }
   };
 
@@ -344,6 +388,36 @@ const CandidateJobBoard = ({ user, allJobs, recommendations = [], myProfile, onR
           </AnimatePresence>
         </div>
       )}
+
+      {/* Resume Selection Modal */}
+      <AnimatePresence>
+        {applyingJobId && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)' }}>
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="glass-card" style={{ width: '100%', maxWidth: '600px', padding: '2.5rem', borderRadius: '32px', position: 'relative' }}>
+               <button onClick={() => setApplyingJobId(null)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer' }}><X size={24} /></button>
+               <h3 style={{ color: 'white', fontSize: '1.8rem', fontWeight: '800', marginBottom: '1rem' }}>Select Resume</h3>
+               <p style={{ color: 'var(--text-dim)', marginBottom: '2rem' }}>Choose which resume profile to send to the recruiter for this application.</p>
+               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem', maxHeight: '40vh', overflowY: 'auto' }}>
+                 {resumes.map(r => (
+                   <div key={r.id} onClick={() => setSelectedResumeId(r.id)} style={{ padding: '1rem 1.5rem', background: selectedResumeId === r.id ? 'hsla(217, 91%, 60%, 0.1)' : 'var(--bg-primary)', border: selectedResumeId === r.id ? '2px solid var(--primary)' : '2px solid transparent', borderRadius: '16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                     <div>
+                        <div style={{ color: 'white', fontWeight: '800', fontSize: '1.1rem' }}>{r.name}</div>
+                        <div style={{ color: 'var(--text-dim)', fontSize: '0.85rem', marginTop: '4px' }}>Added: {r.date}</div>
+                     </div>
+                     <div style={{ color: 'var(--primary)', fontWeight: '900' }}>{r.score}% Match</div>
+                   </div>
+                 ))}
+               </div>
+               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                  <button onClick={() => setApplyingJobId(null)} className="btn-action-pro" style={{ padding: '1rem 2rem' }}>Cancel</button>
+                  <button onClick={submitApplication} className="btn-action-pro btn-primary" style={{ padding: '1rem 2rem' }} disabled={processingId === applyingJobId}>
+                      {processingId === applyingJobId ? 'Submitting...' : 'Submit Application'}
+                  </button>
+               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

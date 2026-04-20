@@ -16,6 +16,7 @@ import CandidateJobBoard from './components/candidate/CandidateJobBoard';
 import CandidateHome from './components/candidate/CandidateHome';
 import CandidatePrepHub from './components/candidate/CandidatePrepHub';
 import CandidateProfile from './components/candidate/CandidateProfile';
+import CandidateSimulation from './components/candidate/CandidateSimulation';
 
 const ADMIN_EMAILS = [
   "himanshubansal1803@gmail.com", "nikhiltelkar19@gmail.com", 
@@ -24,7 +25,7 @@ const ADMIN_EMAILS = [
 
 const API_BASE_URL = "http://localhost:5001/api";
 
-const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candidates, jobs, onRefresh, recommendations }) => {
+const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candidates, jobs, onRefresh, recommendations, activeInterviewApp, setActiveInterviewApp }) => {
   const isAdmin = role === 'admin';
   
   // Robustly find the candidate profile for the logged-in user
@@ -130,8 +131,9 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
                activeTab === 'dashboard' ? <CandidateHome user={user} candidates={candidates} myProfile={myProfile} recommendations={recommendations} /> : 
                activeTab === 'submit' ? <CandidateSubmit onRefresh={onRefresh} setActiveTab={setActiveTab} /> :
                activeTab === 'jobboard' ? <CandidateJobBoard user={user} allJobs={jobs} myProfile={myProfile} onRefresh={onRefresh} recommendations={recommendations} setActiveTab={setActiveTab} /> :
-               activeTab === 'profile' ? <CandidateProfile user={user} myProfile={myProfile} onRefresh={onRefresh} /> :
-               <CandidatePrepHub />
+               activeTab === 'profile' ? <CandidateProfile user={user} myProfile={myProfile} onRefresh={onRefresh} setActiveTab={setActiveTab} /> :
+               activeTab === 'interview' ? <CandidateSimulation myProfile={myProfile} activeInterviewApp={activeInterviewApp} setActiveTab={setActiveTab} /> :
+               <CandidatePrepHub myProfile={myProfile} setActiveTab={setActiveTab} setActiveInterviewApp={setActiveInterviewApp} />
             )}
           </motion.div>
         </AnimatePresence>
@@ -148,6 +150,7 @@ const App = () => {
   const [recommendations, setRecommendations] = useState([]);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeChatCandidate, setActiveChatCandidate] = useState(null);
+  const [activeInterviewApp, setActiveInterviewApp] = useState(null);
   const { user } = useUser();
   const isAdmin = useMemo(() => ADMIN_EMAILS.includes(user?.primaryEmailAddress?.emailAddress), [user]);
 
@@ -235,6 +238,8 @@ const App = () => {
           recommendations={recommendations}
           onOpenChat={handleOpenChat}
           onRefresh={fetchData}
+          activeInterviewApp={activeInterviewApp}
+          setActiveInterviewApp={setActiveInterviewApp}
         />
         <AIChatbotSidebar 
           isOpen={isChatOpen} 

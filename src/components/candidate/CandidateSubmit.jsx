@@ -9,6 +9,7 @@ const CandidateSubmit = ({ setActiveTab, onRefresh }) => {
   const [score, setScore] = useState(0);
   const [summary, setSummary] = useState("");
   const [extractedName, setExtractedName] = useState("");
+  const [resumeTitle, setResumeTitle] = useState("");
   const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = useRef(null);
   const { user } = useUser();
@@ -25,6 +26,20 @@ const CandidateSubmit = ({ setActiveTab, onRefresh }) => {
         return;
     }
 
+    const email = user?.primaryEmailAddress?.emailAddress;
+    if (email) {
+      try {
+        const checkRes = await fetch(`http://localhost:5001/api/candidates/${email}/resumes`);
+        const existing = await checkRes.json();
+        if (existing.length >= 4) {
+            alert("You can store up to 4 resumes. Please delete one from your profile first.");
+            return;
+        }
+      } catch (err) {
+        console.error("Failed to check resume limit:", err);
+      }
+    }
+
     setUploadState('uploading');
     setScore(0);
     setSummary("");
@@ -34,6 +49,7 @@ const CandidateSubmit = ({ setActiveTab, onRefresh }) => {
     formData.append('email', user?.primaryEmailAddress?.emailAddress);
     formData.append('name', user?.fullName || "Candidate");
     formData.append('role', "Software Engineer Applicant");
+    formData.append('resumeTitle', resumeTitle.trim() !== '' ? resumeTitle.trim() : file.name);
 
     try {
       const response = await fetch('http://localhost:5001/api/candidates', {
@@ -56,6 +72,9 @@ const CandidateSubmit = ({ setActiveTab, onRefresh }) => {
           clearInterval(interval);
           setUploadState('complete');
           setSummary(data.summary || "");
+          
+          // Resume is now persisted by the backend directly
+
           if (onRefresh) onRefresh();
         }
       }, 15);
@@ -101,6 +120,18 @@ const CandidateSubmit = ({ setActiveTab, onRefresh }) => {
         accept="application/pdf" 
         onChange={handleFileChange}
       />
+
+      <div style={{ marginBottom: '2rem' }}>
+        <label style={{ display: 'block', color: 'var(--text-muted)', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 600 }}>Resume Title (Optional)</label>
+        <input 
+          type="text" 
+          value={resumeTitle}
+          onChange={(e) => setResumeTitle(e.target.value)}
+          placeholder="e.g. Frontend Developer Resume - 2024"
+          disabled={uploadState === 'uploading'}
+          style={{ width: '100%', maxWidth: '400px', background: 'hsla(255, 255%, 255%, 0.03)', border: '1px solid var(--card-border)', padding: '12px 16px', borderRadius: '12px', color: 'white', fontSize: '1rem', outline: 'none' }}
+        />
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '3rem', alignItems: 'start' }}>
         {/* Upload Zone */}

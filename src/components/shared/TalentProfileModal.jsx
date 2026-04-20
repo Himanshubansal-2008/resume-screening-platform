@@ -88,8 +88,13 @@ const TalentProfileModal = ({ isOpen, onClose, candidate }) => {
                   <User size={48} color="white" />
                 </div>
                 <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
                         <h2 style={{ color: 'white', fontSize: '2.5rem', fontWeight: '900', letterSpacing: '-1px' }}>{candidate.name}</h2>
+                        {candidate.appliedResumeTitle && (
+                            <span className="pill-capsule" style={{ background: 'hsla(255, 90%, 75%, 0.1)', color: '#a78bfa', border: '1px solid hsla(255, 90%, 75%, 0.2)', fontSize: '0.75rem', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                📄 {candidate.appliedResumeTitle}
+                            </span>
+                        )}
                         <span className="pill-capsule" style={{ background: 'var(--primary-glow)', color: 'var(--primary)', border: '1px solid hsla(217, 91%, 60%, 0.2)' }}>
                             {candidate.match}% AI MATCH
                         </span>
