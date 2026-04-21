@@ -155,7 +155,7 @@ const AdminDashboard = ({ candidates = [] }) => {
                         <h4 className="diagnostic-title">
                             <Bot size={18} color="var(--primary)" /> Intelligence Tip
                         </h4>
-                        <p className="card-role-text text-white">Match quality up by 20% this week. Adjust فنی weights.</p>
+                        <p className="card-role-text text-white">Match quality up by 20% this week. Adjust technical weights.</p>
                         <button className="nav-item-pro items-center justify-center active">Optimize Matrix</button>
                     </div>
                 </div>

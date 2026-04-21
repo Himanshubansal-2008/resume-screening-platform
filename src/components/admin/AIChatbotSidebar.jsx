@@ -81,6 +81,14 @@ const AIChatbotSidebar = ({ isOpen, onClose, candidates, activeCandidate }) => {
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [messages, isLoading]);
 
   useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape' && isOpen) onClose();
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
     if (isOpen) {
       setError(null);
       if (activeCandidate) {
@@ -118,68 +126,85 @@ const AIChatbotSidebar = ({ isOpen, onClose, candidates, activeCandidate }) => {
                   <Sparkles className="text-primary" size={24} />
                 </div>
                 <div>
-                  <h3 className="text-white text-xl font-black tracking-tight">HireAI <span className="text-primary">Copilot</span></h3>
+                  <h3 className="chat-title-brand">HireAI <span>Copilot</span></h3>
                   <div className="flex items-center gap-1.5 text-primary font-black text-xs uppercase tracking-tighter">
                     <div className="w-1.5 h-1.5 bg-primary rounded-full shadow-glow-primary"></div>
                     {activeCandidate ? `Targeted: ${activeCandidate.name}` : `Broad Analysis`}
                   </div>
                 </div>
               </div>
-              <button onClick={onClose} className="p-2 bg-white-05 border-none text-slate-500 hover:text-white rounded-xl transition-colors"><X size={20} /></button>
+              <button onClick={onClose} className="btn-close-pro"><X size={20} /></button>
             </div>
 
-            <div ref={scrollRef} className="flex-1 overflow-y-auto p-8 flex flex-col gap-8 scroll-smooth">
+            <div ref={scrollRef} className="chat-scroll-area">
                {messages.map(msg => (
-                 <div key={msg.id} className={`flex-col gap-2 max-w-[90%] ${msg.role === 'user' ? 'self-end' : 'self-start'}`}>
-                   <div className={`p-5 rounded-3xl ${msg.role === 'user' ? 'bg-primary rounded-br-md shadow-glow-user' : 'bg-white-04 rounded-bl-md border border-white-08'}`}>
+                 <motion.div 
+                   key={msg.id} 
+                   initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                   animate={{ opacity: 1, y: 0, scale: 1 }}
+                   transition={{ type: 'spring', damping: 20, stiffness: 100 }}
+                   className={`flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
+                 >
+                   <span className="msg-meta">
+                      {msg.role === 'user' ? 'AUTHORIZED RECRUITER' : 'HIREAI INTELLIGENCE'}
+                   </span>
+                   <div className={`msg-bubble-pro ${msg.role === 'user' ? 'msg-user' : 'msg-bot'}`}>
                      {msg.reasoning && <NeuralThinkingBlock content={msg.reasoning} />}
                      <NeuralText>{msg.text || (msg.reasoning ? "" : "No content.")}</NeuralText>
                    </div>
-                   <span className={`text-xs font-black uppercase tracking-widest text-slate-600 ${msg.role === 'user' ? 'self-end' : 'self-start'}`}>
-                        {msg.role === 'user' ? 'YOU' : 'HIREAI'}
-                   </span>
-                 </div>
+                 </motion.div>
                ))}
 
                {isLoading && (
-                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="self-start flex items-center gap-3 bg-primary-05 p-3 px-5 rounded-2xl border border-primary-10">
+                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="self-start flex items-center gap-4 bg-primary-05 p-4 px-6 rounded-2xl border border-primary-10">
                     <div className="relative">
                         <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }} transition={{ duration: 2, repeat: Infinity }} className="absolute -inset-1 bg-primary-20 rounded-full blur-sm" />
-                        <Brain size={18} className="text-primary" />
+                        <Brain size={20} className="text-primary" />
                     </div>
                     <div className="flex-col">
-                        <span className="text-primary font-black text-xs uppercase tracking-widest">Thinking</span>
-                        <div className="flex gap-1 mt-1">
-                            {[0, 1, 2].map(i => <motion.div key={i} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }} className="w-1 h-1 bg-primary rounded-full" />)}
+                        <span className="text-primary font-black text-[10px] uppercase tracking-widest">Neural Processing</span>
+                        <div className="flex gap-1.5 mt-1.5">
+                            {[0, 1, 2].map(i => <motion.div key={i} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }} className="w-1.5 h-1.5 bg-primary rounded-full" />)}
                         </div>
                     </div>
                  </motion.div>
                )}
 
                {error && (
-                 <div className="bg-danger-05 border border-danger-20 p-4 rounded-xl flex items-start gap-3">
+                 <div className="bg-danger-05 border border-danger-20 p-5 rounded-2xl flex items-start gap-3">
                     <AlertCircle size={20} className="text-danger flex-shrink-0" />
-                    <p className="text-danger-light text-sm leading-relaxed">{error}</p>
+                    <p className="text-danger-light text-sm leading-relaxed font-bold">{error}</p>
                  </div>
                )}
             </div>
 
-            <div className="px-8 pb-6 flex flex-wrap gap-2">
-                {PROMPTS.map(p => (
-                   <button key={p} onClick={() => setInput(p)} disabled={isLoading} className="text-xs font-black bg-primary-05 border border-primary-15 text-primary p-2 px-4 rounded-xl hover:bg-primary-10 transition-colors">
-                     {p}
-                   </button>
-                ))}
-            </div>
-
-            <form onSubmit={handleSend} className="input-area-shell">
-                <div className="relative">
-                    <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask HireAI anything..." disabled={isLoading} className="chat-field-pro" />
-                    <button type="submit" disabled={isLoading || !input.trim()} className={`absolute right-3 top-1/2 -translate-y-1/2 p-3 rounded-xl flex items-center justify-center transition-all ${input.trim() ? 'bg-primary text-white shadow-glow-primary' : 'bg-white-05 text-slate-500 opacity-50'}`}>
-                        <Send size={20} />
-                    </button>
+            <div className="input-area-shell">
+                <div className="prompts-container mb-6">
+                    {PROMPTS.map(p => (
+                       <button key={p} onClick={() => setInput(p)} disabled={isLoading} className="prompt-pill">
+                         {p}
+                       </button>
+                    ))}
                 </div>
-            </form>
+
+                <form onSubmit={handleSend} className="chat-input-container">
+                    <input 
+                      type="text" 
+                      value={input} 
+                      onChange={(e) => setInput(e.target.value)} 
+                      placeholder="Ask HireAI anything..." 
+                      disabled={isLoading} 
+                      className="chat-field-pro" 
+                    />
+                    <button 
+                      type="submit" 
+                      disabled={isLoading || !input.trim()} 
+                      className="chat-send-btn"
+                    >
+                        {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                    </button>
+                </form>
+            </div>
           </motion.div>
         </>
       )}

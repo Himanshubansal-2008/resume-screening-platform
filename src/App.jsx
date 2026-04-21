@@ -25,7 +25,7 @@ const ADMIN_EMAILS = [
 
 const API_BASE_URL = "http://localhost:5001/api";
 
-const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candidates, jobs, onRefresh, recommendations, activeInterviewApp, setActiveInterviewApp, theme, onToggleTheme }) => {
+const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candidates, jobs, onRefresh, recommendations, activeInterviewApp, setActiveInterviewApp, theme, onToggleTheme, isChatOpen, activeChatCandidate }) => {
   const isAdmin = role === 'admin';
   
   const myProfile = useMemo(() => {
@@ -62,10 +62,23 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
               <div className="sidebar-section-title">INTELLIGENCE</div>
 
               <button 
-                className="nav-item-pro btn-ask-ai" 
+                className={`nav-item-pro btn-ask-ai ${isChatOpen && !activeChatCandidate ? 'active' : ''}`} 
                 onClick={() => onOpenChat()}
               >
                 <Bot size={18} /> <span>Ask HireAI Bot</span>
+              </button>
+
+              <div className="sidebar-separator"></div>
+
+              <button
+                onClick={onToggleTheme}
+                className="theme-toggle-btn"
+              >
+                <div className={`theme-toggle-track ${theme === 'dark' ? 'dark' : ''}`}>
+                  <div className="theme-toggle-thumb" />
+                </div>
+                {theme === 'dark' ? <Moon size={15} /> : <Sun size={15} color="var(--warning)" />}
+                <span>{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
               </button>
             </>
           ) : (
@@ -201,8 +214,12 @@ const App = () => {
   }, [fetchData]);
 
   const handleOpenChat = (candidate = null) => {
-    setActiveChatCandidate(candidate);
-    setIsChatOpen(true);
+    if (isChatOpen && activeChatCandidate?.id === candidate?.id) {
+      setIsChatOpen(false);
+    } else {
+      setActiveChatCandidate(candidate);
+      setIsChatOpen(true);
+    }
   };
 
   return (
@@ -260,6 +277,8 @@ const App = () => {
           setActiveInterviewApp={setActiveInterviewApp}
           theme={theme}
           onToggleTheme={toggleTheme}
+          isChatOpen={isChatOpen}
+          activeChatCandidate={activeChatCandidate}
         />
         <AIChatbotSidebar 
           isOpen={isChatOpen} 
