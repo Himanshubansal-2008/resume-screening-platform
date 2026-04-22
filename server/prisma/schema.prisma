@@ -28,6 +28,7 @@ model Candidate {
   updatedAt    DateTime      @updatedAt
   applications Application[]
   resumes      Resume[]
+  interviews   Interview[]
 }
 
 model Resume {
@@ -64,6 +65,7 @@ model Job {
   createdAt        DateTime @default(now())
   updatedAt   DateTime @updatedAt
   applications     Application[]
+  interviews       Interview[]
 }
 
 model Application {
@@ -83,4 +85,18 @@ model Application {
   resumeSkills      String[]
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
+}
+
+model Interview {
+  id              Int       @id @default(autoincrement())
+  candidateEmail  String
+  candidate       Candidate @relation(fields: [candidateId], references: [id])
+  candidateId     Int
+  job             Job       @relation(fields: [jobId], references: [id])
+  jobId           Int
+  transcript      Json?
+  overallScore    Int?      @default(0)
+  feedback        String?
+  analysis        Json?     // Detailed metadata for the report
+  createdAt       DateTime  @default(now())
 }
