@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  History, Calendar, Award, Target, MessageSquare, 
-  ChevronRight, Brain, Zap, Download, Trophy, 
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
+import {
+  History, Calendar, Award, Target, MessageSquare,
+  ChevronRight, Brain, Zap, Trophy,
   ArrowLeft, Star, FileText, CheckCircle2, ShieldCheck,
   TrendingUp, Sparkles, Cpu
 } from 'lucide-react';
@@ -39,16 +39,28 @@ const CandidateHistory = ({ user, myProfile }) => {
 
   const AnalysisModal = ({ interview, onClose }) => {
     const analysis = interview.analysis || {};
-    
+
+    // 3D Tilt Effect for Certificate
+    const x = useMotionValue(0);
+    const y = useMotionValue(0);
+    const handleMouseMove = (event) => {
+      const rect = event.currentTarget.getBoundingClientRect();
+      x.set(event.clientX - (rect.left + rect.width / 2));
+      y.set(event.clientY - (rect.top + rect.height / 2));
+    };
+    const handleMouseLeave = () => { x.set(0); y.set(0); };
+    const rotateX = useTransform(y, [-300, 300], [5, -5]);
+    const rotateY = useTransform(x, [-300, 300], [-5, 5]);
+
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="history-modal-overlay"
         onClick={onClose}
       >
-        <motion.div 
+        <motion.div
           initial={{ scale: 0.9, y: 20 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.9, y: 20 }}
@@ -57,21 +69,26 @@ const CandidateHistory = ({ user, myProfile }) => {
         >
           <div className="analysis-certificate-container">
             {/* Canva-like Stylized Certificate Header */}
-            <div className="certificate-design">
+            <motion.div 
+              className="certificate-design"
+              style={{ rotateX, rotateY, transformPerspective: 1000 }}
+              onMouseMove={handleMouseMove}
+              onMouseLeave={handleMouseLeave}
+            >
               <div className="cert-top-accent" />
-              <div className="cert-content">
+              <div className="cert-content" style={{ transform: 'translateZ(20px)' }}>
                 <div className="cert-logo">
                   <Cpu size={32} color="var(--primary)" />
                   <span className="cert-brand">HIREAI NEURAL VERIFIED</span>
                 </div>
-                
-                <h2 className="cert-title">{analysis.certificateMetadata || "Performance Excellence"}</h2>
+
+                <h2 className="cert-title">Neural Performance Summary</h2>
                 <div className="cert-divider" />
                 
-                <p className="cert-subtitle">This document acknowledges the technical evaluation of</p>
+                <p className="cert-subtitle">Technical assessment details for</p>
                 <h1 className="cert-name">{myProfile?.name || user?.fullName}</h1>
-                <p className="cert-role">For the position of {interview.job?.title}</p>
-                
+                <p className="cert-role">{interview.job?.title}</p>
+
                 <div className="cert-metrics">
                   <div className="cert-metric-box">
                     <span className="cert-metric-val">{interview.overallScore}%</span>
@@ -82,7 +99,7 @@ const CandidateHistory = ({ user, myProfile }) => {
                     <span className="cert-metric-label">ACHIEVED RANK</span>
                   </div>
                 </div>
-                
+
                 <div className="cert-footer">
                   <div className="cert-date">Evaluated on {new Date(interview.createdAt).toLocaleDateString()}</div>
                   <div className="cert-sig">
@@ -91,7 +108,7 @@ const CandidateHistory = ({ user, myProfile }) => {
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Detailed Analysis Section */}
             <div className="analysis-details-pane">
@@ -101,20 +118,22 @@ const CandidateHistory = ({ user, myProfile }) => {
               </div>
 
               <div className="pane-stats">
-                <div className="stat-card">
+                <motion.div whileHover={{ scale: 1.05 }} className="stat-card" style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
                   <Brain size={20} color="var(--primary)" />
-                  <div className="stat-info">
+                  <div className="stat-info" style={{ zIndex: 1 }}>
                     <span className="stat-label">Technical Depth</span>
                     <span className="stat-value">{analysis.technicalDepth || 0}%</span>
                   </div>
-                </div>
-                <div className="stat-card">
+                  <motion.div initial={{ width: 0 }} animate={{ width: `${analysis.technicalDepth || 0}%` }} transition={{ duration: 1, delay: 0.5 }} style={{ position: 'absolute', bottom: 0, left: 0, height: '4px', background: 'var(--primary)', opacity: 0.5 }} />
+                </motion.div>
+                <motion.div whileHover={{ scale: 1.05 }} className="stat-card" style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
                   <Zap size={20} color="var(--warning)" />
-                  <div className="stat-info">
+                  <div className="stat-info" style={{ zIndex: 1 }}>
                     <span className="stat-label">Communication</span>
                     <span className="stat-value">{analysis.communicationSkills || 0}%</span>
                   </div>
-                </div>
+                  <motion.div initial={{ width: 0 }} animate={{ width: `${analysis.communicationSkills || 0}%` }} transition={{ duration: 1, delay: 0.7 }} style={{ position: 'absolute', bottom: 0, left: 0, height: '4px', background: 'var(--warning)', opacity: 0.5 }} />
+                </motion.div>
               </div>
 
               <div className="analysis-sections">
@@ -125,7 +144,7 @@ const CandidateHistory = ({ user, myProfile }) => {
                     {!analysis.strengths && <li>Performance metrics are within expected parameters.</li>}
                   </ul>
                 </div>
-                
+
                 <div className="analysis-section">
                   <h4><TrendingUp size={16} color="var(--info)" /> Growth Areas</h4>
                   <ul>
@@ -140,11 +159,7 @@ const CandidateHistory = ({ user, myProfile }) => {
                 </div>
               </div>
 
-              <div className="pane-actions">
-                 <button className="btn-download-cert" onClick={() => window.print()}>
-                   <Download size={18} /> Download Certificate
-                 </button>
-              </div>
+              {/* Actions removed as requested */}
             </div>
           </div>
         </motion.div>
@@ -163,14 +178,14 @@ const CandidateHistory = ({ user, myProfile }) => {
           </div>
         </div>
         <div className="history-stats-mini">
-           <div className="mini-stat">
-             <span className="val">{interviews.length}</span>
-             <span className="lbl">Interviews</span>
-           </div>
-           <div className="mini-stat">
-             <span className="val">{interviews.length > 0 ? Math.round(interviews.reduce((acc, curr) => acc + (curr.overallScore || 0), 0) / interviews.length) : 0}%</span>
-             <span className="lbl">Avg Score</span>
-           </div>
+          <div className="mini-stat">
+            <span className="val">{interviews.length}</span>
+            <span className="lbl">Interviews</span>
+          </div>
+          <div className="mini-stat">
+            <span className="val">{interviews.length > 0 ? Math.round(interviews.reduce((acc, curr) => acc + (curr.overallScore || 0), 0) / interviews.length) : 0}%</span>
+            <span className="lbl">Avg Score</span>
+          </div>
         </div>
       </div>
 
@@ -191,7 +206,7 @@ const CandidateHistory = ({ user, myProfile }) => {
       ) : (
         <div className="history-grid">
           {interviews.map((interview, index) => (
-            <motion.div 
+            <motion.div
               key={interview.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -228,7 +243,7 @@ const CandidateHistory = ({ user, myProfile }) => {
                   <span className="footer-tag"><Brain size={12} /> Technical</span>
                   <span className="footer-tag"><Zap size={12} /> AI Verified</span>
                 </div>
-                <button 
+                <button
                   className="btn-analysis"
                   onClick={() => setSelectedInterview(interview)}
                 >
@@ -242,9 +257,9 @@ const CandidateHistory = ({ user, myProfile }) => {
 
       <AnimatePresence>
         {selectedInterview && (
-          <AnalysisModal 
-            interview={selectedInterview} 
-            onClose={() => setSelectedInterview(null)} 
+          <AnalysisModal
+            interview={selectedInterview}
+            onClose={() => setSelectedInterview(null)}
           />
         )}
       </AnimatePresence>

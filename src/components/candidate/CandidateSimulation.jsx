@@ -20,6 +20,9 @@ const CandidateSimulation = ({ myProfile, activeInterviewApp, setActiveTab }) =>
   const idleTimeoutRef = useRef(null);
   const isMicBlocked = useRef(false);
   const cooldownTimeoutRef = useRef(null);
+  const streamRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const contentToProcess = useRef("");
 
   // High-performance State Refs for Neural Gating
   const aiSpeakingRef = useRef(false);

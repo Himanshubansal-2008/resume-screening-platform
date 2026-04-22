@@ -14,7 +14,7 @@ const CandidatePrepHub = ({ myProfile, setActiveTab, setActiveInterviewApp }) =>
             <Sparkles size={16} color="#3b82f6" />
             <span className="cph-readiness-badge">Simulation Readiness</span>
           </div>
-          <h2 className="cph-title">Interview Prep Hub</h2>
+          <h2 className="cph-title">Interview Hub</h2>
           <p className="cph-subtitle">Engage in full-stack AI-driven interviews mapped dynamically to your actual applications.</p>
         </div>
       </div>

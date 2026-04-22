@@ -176,9 +176,13 @@ const CandidateJobBoard = ({ user, allJobs, recommendations = [], myProfile, onR
                     </span>
                   </div>
 
-                  <p className="cjb-job-description">
-                    {isExpanded ? job.description : (job.description || '').substring(0, 200) + '...'}
-                  </p>
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="cjb-job-description" style={{ marginBottom: '1.5rem', marginTop: '1rem' }}>
+                        {job.description}
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
 
                   {(job.skills || []).length > 0 && (
                     <div className="cjb-skills-row">

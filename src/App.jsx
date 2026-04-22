@@ -33,6 +33,24 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
     return candidates.find(c => c.email === user?.primaryEmailAddress?.emailAddress);
   }, [candidates, user]);
 
+  const getHeaderContent = () => {
+    if (isAdmin) {
+      if (activeTab === 'dashboard') return { title: 'Recruiter Hub', subtitle: 'Orchestrate your multi-dimensional hiring pipeline.' };
+      if (activeTab === 'database') return { title: 'Resume Database', subtitle: 'Search and filter candidate profiles.' };
+      if (activeTab === 'jobs') return { title: 'Job Descriptions', subtitle: 'Manage and create new job postings.' };
+    } else {
+      if (activeTab === 'dashboard') return { title: `Hey ${user?.firstName}!`, subtitle: 'Track your strategic application roadmap.' };
+      if (activeTab === 'submit') return { title: 'Submission Portal', subtitle: 'Submit your application and resumes for AI evaluation.' };
+      if (activeTab === 'jobboard') return { title: 'Job Openings', subtitle: 'Discover AI-ranked career opportunities.' };
+      if (activeTab === 'history') return { title: 'Interview History', subtitle: 'Review your past simulated and real interviews.' };
+      if (activeTab === 'prephub') return { title: 'Interview Prep Hub', subtitle: 'Practice and prepare with AI-driven simulations.' };
+      if (activeTab === 'interview') return { title: 'Simulated Interview', subtitle: 'Interact with AI to demonstrate your skills.' };
+    }
+    return { title: '', subtitle: '' };
+  };
+
+  const headerContent = getHeaderContent();
+
   return (
     <div className="app-container">
       <aside className="sidebar">
@@ -94,13 +112,13 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
                 <FileText size={18} /> <span>Submission Portal</span>
               </button>
               <button className={`nav-item-pro ${activeTab === 'prephub' ? 'active' : ''}`} onClick={() => setActiveTab('prephub')}>
-                <HelpCircle size={18} /> <span>Interview Prep Hub</span>
-              </button>
-              <button className={`nav-item-pro ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>
-                <User size={18} /> <span>My Profile</span>
+                <HelpCircle size={18} /> <span>Interview Hub</span>
               </button>
               <button className={`nav-item-pro ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>
                 <History size={18} /> <span>Interview History</span>
+              </button>
+              <button className={`nav-item-pro ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>
+                <User size={18} /> <span>My Profile</span>
               </button>
 
               <button
@@ -123,23 +141,23 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
       </aside>
 
       <main className="main-content">
-        <header className="main-header">
-          <div>
-            <h1 className="header-title">{isAdmin ? 'Recruiter Hub' : `Hey ${user?.firstName}!`}</h1>
-            <p className="header-subtitle">
-                {isAdmin ? "Orchestrate your multi-dimensional hiring pipeline." : "Track your strategic application roadmap."}
-            </p>
-          </div>
-          <div className="header-right">
-            <div className="status-item">
-               <ShieldCheck size={16} color="var(--primary)" /> SECURE SESSION
+        {activeTab !== 'profile' && (
+          <header className="main-header">
+            <div>
+              <h1 className="header-title">{headerContent.title}</h1>
+              <p className="header-subtitle">{headerContent.subtitle}</p>
             </div>
-            <div className="status-pill">
-                <div className="pulse-dot"></div>
-                <span className="status-pill-text">STABLE MODE</span>
+            <div className="header-right">
+              <div className="status-item">
+                 <ShieldCheck size={16} color="var(--primary)" /> SECURE SESSION
+              </div>
+              <div className="status-pill">
+                  <div className="pulse-dot"></div>
+                  <span className="status-pill-text">STABLE MODE</span>
+              </div>
             </div>
-          </div>
-        </header>
+          </header>
+        )}
 
         <AnimatePresence mode="wait">
           <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3, ease: "easeOut" }}>
