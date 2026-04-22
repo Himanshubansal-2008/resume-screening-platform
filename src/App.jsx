@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Users, FileText, LayoutDashboard, Database, Search, 
   TrendingUp, CheckCircle, AlertCircle, MessageSquare, Plus,
-  ShieldCheck, HelpCircle, Cpu, ChevronRight, ClipboardList, Bot, ArrowRight, User, Sun, Moon
+  ShieldCheck, HelpCircle, Cpu, ChevronRight, ClipboardList, Bot, ArrowRight, User, Sun, Moon, History
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from '@clerk/clerk-react';
@@ -17,6 +17,7 @@ import CandidateHome from './components/candidate/CandidateHome';
 import CandidatePrepHub from './components/candidate/CandidatePrepHub';
 import CandidateProfile from './components/candidate/CandidateProfile';
 import CandidateSimulation from './components/candidate/CandidateSimulation';
+import CandidateHistory from './components/candidate/CandidateHistory';
 
 const ADMIN_EMAILS = [
   "himanshubansal1803@gmail.com", "nikhiltelkar19@gmail.com", 
@@ -98,6 +99,9 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
               <button className={`nav-item-pro ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>
                 <User size={18} /> <span>My Profile</span>
               </button>
+              <button className={`nav-item-pro ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>
+                <History size={18} /> <span>Interview History</span>
+              </button>
 
               <button
                 onClick={onToggleTheme}
@@ -149,6 +153,7 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
                activeTab === 'jobboard' ? <CandidateJobBoard user={user} allJobs={jobs} myProfile={myProfile} onRefresh={onRefresh} recommendations={recommendations} setActiveTab={setActiveTab} /> :
                activeTab === 'profile' ? <CandidateProfile user={user} myProfile={myProfile} onRefresh={onRefresh} setActiveTab={setActiveTab} /> :
                activeTab === 'interview' ? <CandidateSimulation myProfile={myProfile} activeInterviewApp={activeInterviewApp} setActiveTab={setActiveTab} /> :
+               activeTab === 'history' ? <CandidateHistory user={user} myProfile={myProfile} /> :
                <CandidatePrepHub myProfile={myProfile} setActiveTab={setActiveTab} setActiveInterviewApp={setActiveInterviewApp} />
             )}
           </motion.div>
