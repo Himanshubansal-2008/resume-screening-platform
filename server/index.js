@@ -7,6 +7,8 @@ const multer = require('multer');
 const pdf = require('pdf-parse');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const Groq = require('groq-sdk');
+const fs = require('fs');
+const path = require('path');
 const upload = multer();
 
 const app = express();
@@ -14,6 +16,7 @@ const PORT = process.env.PORT || 5001;
 
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // --- UTILITIES ---
 function cleanJsonResponse(text) {
@@ -457,10 +460,17 @@ app.post('/api/candidates', upload.single('resumePdf'), async (req, res) => {
 
         let extractedText = "No resume text found.";
         let fileName = "Resume.pdf";
+        let fileUrl = null;
         if (req.file) {
             const pdfData = await pdf(req.file.buffer);
             extractedText = pdfData.text;
             fileName = req.file.originalname || "Resume.pdf";
+            
+            const safeName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+            const uniqueFilename = `${Date.now()}-${safeName}`;
+            const filePath = path.join(__dirname, 'uploads', uniqueFilename);
+            fs.writeFileSync(filePath, req.file.buffer);
+            fileUrl = `http://localhost:5001/uploads/${uniqueFilename}`;
         }
 
         console.log(`[Neural Engine] Analyzing resume for ${email}...`);
@@ -475,7 +485,8 @@ app.post('/api/candidates', upload.single('resumePdf'), async (req, res) => {
                 summary: ai.summary,
                 detailedAnalysis: ai.detailedAnalysis,
                 feedback: ai.reason,
-                status: 'Top Pick'
+                status: 'Top Pick',
+                ...(fileUrl && { file: fileUrl })
             },
             create: {
                 email,
@@ -487,7 +498,8 @@ app.post('/api/candidates', upload.single('resumePdf'), async (req, res) => {
                 detailedAnalysis: ai.detailedAnalysis,
                 feedback: ai.reason,
                 status: 'Top Pick',
-                applied: 'Just now'
+                applied: 'Just now',
+                file: fileUrl
             }
         });
 

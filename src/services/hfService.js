@@ -4,9 +4,7 @@
  */
 
 const HF_TOKEN = import.meta.env.VITE_HF_TOKEN;
-// Switching to a more stable, widely available Instruct model
-const MODEL_ID = "mistralai/Mistral-7B-Instruct-v0.2";
-const API_URL = "https://router.huggingface.co/v1/chat/completions";
+
 
 export const queryAI = async (messages) => {
     console.log("Querying HireAI with token:", HF_TOKEN ? "Present" : "Missing");

@@ -84,31 +84,37 @@ const AdminDashboard = ({ candidates = [] }) => {
                     </div>
 
                     <div className="admin-card-list">
-                        {topCandidates.length > 0 ? topCandidates.map((candidate, i) => (
-                            <motion.div 
-                                key={candidate.id}
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.3 + (i * 0.05) }}
-                                onClick={() => setSelectedCandidate(candidate)}
-                                className="glass-card admin-item-card"
-                                whileHover={{ scale: 1.01 }}
-                            >
-                                <div className="admin-avatar-box"><User size={22} color="white" /></div>
-                                <div className="flex-1 min-w-0">
-                                    <h4 className="card-title-white">{candidate.name}</h4>
-                                    <p className="card-role-text">{candidate.role || "Software Engineer applicant"}</p>
-                                </div>
-                                <div className="flex-2">
-                                    <p className="card-summary-clamped">{candidate.summary}</p>
-                                </div>
-                                <div className="match-score-indicator">
-                                    <div className="match-val-pro">{candidate.match}%</div>
-                                    <div className="match-label-pro">AI MATCH</div>
-                                </div>
-                                <div className="card-icon-button"><ChevronRight size={18} /></div>
-                            </motion.div>
-                        )) : (
+                        {topCandidates.length > 0 ? topCandidates.map((candidate, i) => {
+                            const latestApp = candidate.applications?.[0];
+                            const displayRole = latestApp?.job?.title || candidate.role || "Software Engineer applicant";
+                            const displaySummary = latestApp?.resumeSummary || candidate.summary;
+                            
+                            return (
+                                <motion.div 
+                                    key={candidate.id}
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 0.3 + (i * 0.05) }}
+                                    onClick={() => setSelectedCandidate(candidate)}
+                                    className="glass-card admin-item-card"
+                                    whileHover={{ scale: 1.01 }}
+                                >
+                                    <div className="admin-avatar-box"><User size={22} color="white" /></div>
+                                    <div className="flex-1 min-w-0">
+                                        <h4 className="card-title-white">{candidate.name}</h4>
+                                        <p className="card-role-text">{displayRole}</p>
+                                    </div>
+                                    <div className="flex-2">
+                                        <p className="card-summary-clamped">{displaySummary}</p>
+                                    </div>
+                                    <div className="match-score-indicator">
+                                        <div className="match-val-pro">{candidate.match}%</div>
+                                        <div className="match-label-pro">AI MATCH</div>
+                                    </div>
+                                    <div className="card-icon-button"><ChevronRight size={18} /></div>
+                                </motion.div>
+                            );
+                        }) : (
                             <div className="infra-msg-shell">
                                 <Users size={40} className="mb-1 opacity-50" />
                                 <p className="admin-desc-muted">Waiting for Ingestion Data</p>
@@ -155,7 +161,7 @@ const AdminDashboard = ({ candidates = [] }) => {
                         <h4 className="diagnostic-title">
                             <Bot size={18} color="var(--primary)" /> Intelligence Tip
                         </h4>
-                        <p className="card-role-text text-white">Match quality up by 20% this week. Adjust technical weights.</p>
+                        <p className="card-role-text text-white">Match quality up by {Math.round(avgMatchRate/4)}% this week. Adjust technical weights.</p>
                         <button className="nav-item-pro items-center justify-center active">Optimize Matrix</button>
                     </div>
                 </div>
