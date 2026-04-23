@@ -59,14 +59,14 @@ const formatBold = (text) => {
 };
 
 const NeuralThinkingBlock = ({ content }) => (
-  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="thinking-block-shell mb-6 p-6 rounded-2xl relative overflow-hidden bg-primary-03 border-l-4 border-primary shadow-inset-primary">
+  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="thinking-block-shell mb-4 p-4 rounded-xl relative overflow-hidden bg-primary-03 border-l-4 border-primary shadow-inset-primary">
     <motion.div animate={{ opacity: [0.1, 0.2, 0.1], scale: [1, 1.02, 1] }} transition={{ duration: 3, repeat: Infinity }} className="absolute inset-0 bg-radial-primary-10 z-0" />
     <div className="relative z-10">
-      <div className="flex items-center gap-2 mb-4">
-        <motion.div animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: "linear" }}><Brain size={18} className="text-primary" /></motion.div>
-        <span className="font-black text-xs uppercase tracking-widest text-primary">Neural Reasoning Engine</span>
+      <div className="flex items-center gap-2 mb-3">
+        <motion.div animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: "linear" }}><Brain size={16} className="text-primary" /></motion.div>
+        <span className="font-black text-[10px] uppercase tracking-widest text-primary">Neural Reasoning Engine</span>
       </div>
-      <div className="text-slate-300"><NeuralText>{content}</NeuralText></div>
+      <div className="text-slate-300 text-xs"><NeuralText>{content}</NeuralText></div>
     </div>
   </motion.div>
 );
@@ -121,15 +121,15 @@ const AIChatbotSidebar = ({ isOpen, onClose, candidates, activeCandidate }) => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 bg-black-60 backdrop-blur-sm z-1000" />
           <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="ai-copilot-shell">
             <div className="sidebar-header-pro">
-              <div className="flex items-center gap-4">
-                <div className="bg-primary-15 p-3 rounded-2xl border border-primary-20 flex items-center justify-center">
-                  <Sparkles className="text-primary" size={24} />
+              <div className="flex items-center gap-3">
+                <div className="bg-primary-15 p-2 rounded-xl border border-primary-20 flex items-center justify-center">
+                  <Sparkles className="text-primary" size={20} />
                 </div>
                 <div>
-                  <h3 className="chat-title-brand">HireAI <span>Copilot</span></h3>
-                  <div className="flex items-center gap-1.5 text-primary font-black text-xs uppercase tracking-tighter">
-                    <div className="w-1.5 h-1.5 bg-primary rounded-full shadow-glow-primary"></div>
-                    {activeCandidate ? `Targeted: ${activeCandidate.name}` : `Broad Analysis`}
+                  <h3 className="chat-title-brand text-xl">HireAI <span>Copilot</span></h3>
+                  <div className="flex items-center gap-1.5 text-primary font-black text-[10px] uppercase tracking-tighter">
+                    <div className="w-1 h-1 bg-primary rounded-full shadow-glow-primary"></div>
+                    {activeCandidate ? `Context: ${activeCandidate.name}` : `Global Analysis`}
                   </div>
                 </div>
               </div>
@@ -179,9 +179,9 @@ const AIChatbotSidebar = ({ isOpen, onClose, candidates, activeCandidate }) => {
             </div>
 
             <div className="input-area-shell">
-                <div className="prompts-container mb-6">
+                <div className="prompts-container mb-4">
                     {PROMPTS.map(p => (
-                       <button key={p} onClick={() => setInput(p)} disabled={isLoading} className="prompt-pill">
+                       <button key={p} onClick={() => setInput(p)} disabled={isLoading} className="prompt-pill text-[10px] px-3 py-1.5">
                          {p}
                        </button>
                     ))}

@@ -23,6 +23,14 @@
   --radius-xl: 32px;
   --radius-lg: 20px;
   --transition: cubic-bezier(0.16, 1, 0.3, 1);
+  
+  --grid-color: hsla(217, 91%, 60%, 0.03);
+  --plasma-1: hsla(217, 91%, 60%, 0.08);
+  --plasma-2: hsla(190, 90%, 50%, 0.08);
+  --plasma-3: hsla(260, 80%, 70%, 0.05);
+  --overlay-bg: rgba(3, 7, 18, 0.4);
+  --modal-bg: linear-gradient(165deg, hsla(230, 35%, 12%, 0.85) 0%, hsla(230, 35%, 6%, 0.95) 100%);
+  --modal-border: hsla(217, 91%, 60%, 0.3);
 }
 
 /* ── Light Theme Overrides ── */
@@ -43,6 +51,14 @@
   --text-main: hsl(220, 40%, 12%);
   --text-dim: hsl(220, 30%, 28%);
   --text-muted: hsl(220, 25%, 40%);
+
+  --grid-color: hsla(217, 91%, 60%, 0.05);
+  --plasma-1: hsla(217, 91%, 60%, 0.04);
+  --plasma-2: hsla(190, 90%, 50%, 0.04);
+  --plasma-3: hsla(260, 80%, 70%, 0.03);
+  --overlay-bg: rgba(255, 255, 255, 0.4);
+  --modal-bg: linear-gradient(165deg, hsla(0, 0%, 100%, 0.9) 0%, hsla(0, 0%, 98%, 0.95) 100%);
+  --modal-border: hsla(217, 91%, 60%, 0.2);
 }
 
 * {
@@ -58,6 +74,36 @@ body {
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   transition: background-color 0.3s ease, color 0.3s ease;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: 
+    linear-gradient(var(--grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+  background-size: 50px 50px;
+  z-index: -1;
+  pointer-events: none;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: 
+    radial-gradient(circle at 10% 10%, var(--plasma-1) 0%, transparent 40%),
+    radial-gradient(circle at 90% 90%, var(--plasma-2) 0%, transparent 40%),
+    radial-gradient(circle at 50% 50%, var(--plasma-3) 0%, transparent 60%);
+  z-index: -2;
+  animation: plasmaMove 20s infinite alternate ease-in-out;
+}
+
+@keyframes plasmaMove {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.1) translate(20px, -20px); }
 }
 
 /* Specific transitions for themeable elements */
@@ -99,8 +145,8 @@ h4,
 .main-content {
   flex: 1;
   margin-left: var(--sidebar-width);
-  padding: 4rem 5rem;
-  background: var(--bg-main);
+  padding: 3rem 4rem;
+  background: transparent;
 }
 
 .brand {
@@ -178,15 +224,15 @@ h4,
 .main-header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 4rem;
+  margin-bottom: 2.5rem;
   align-items: center;
 }
 
 .header-title {
-  font-size: 3.5rem;
+  font-size: 2.8rem;
   color: var(--text-main);
   font-weight: 900;
-  letter-spacing: -2px;
+  letter-spacing: -1.5px;
 }
 
 .header-subtitle {
@@ -257,13 +303,21 @@ h4,
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(8px);
+  background: 
+    radial-gradient(circle at center, hsla(217, 91%, 60%, 0.1) 0%, transparent 80%),
+    var(--overlay-bg);
+  backdrop-filter: blur(32px) saturate(180%);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 2rem;
   overflow-y: auto;
+  animation: overlayReveal 0.5s ease-out forwards;
+}
+
+@keyframes overlayReveal {
+  from { opacity: 0; backdrop-filter: blur(0px); }
+  to { opacity: 1; backdrop-filter: blur(20px); }
 }
 
 .btn-action-pro {

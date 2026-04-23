@@ -100,16 +100,17 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
     <div className="fadeIn admin-page-container">
       <div className="admin-upload-container">
         <div className="flex-col gap-1">
-          <div className="pill-badge-primary self-start mb-4"><Sparkles size={14} /> AI EXTRACTION ENGINE v4.0</div>
-          <h2 className="title-3-5rem">Recruiter Hub</h2>
-          <p className="admin-desc-muted max-w-md mt-4 text-lg">Multi-dimensional neural extraction for high-velocity hiring. Index your strategy in seconds.</p>
-          <div className="flex gap-1 mt-10 items-center">
-             <button onClick={() => setShowCreateForm(true)} className="btn-action-pro btn-primary h-14 px-10 rounded-2xl">
+          <div className="flex-col gap-05">
+            <div className="pill-badge-primary self-start"><Sparkles size={14} /> AI EXTRACTION ENGINE v4.0</div>
+            <p className="admin-desc-muted mt-2">Index your hiring strategy with multi-dimensional neural extraction.</p>
+          </div>
+          <div className="flex gap-1 items-center mt-6">
+             <button onClick={() => setShowCreateForm(true)} className="btn-action-pro btn-primary h-12 px-8 rounded-xl">
                 <Plus size={18} /> New Manual Posting
              </button>
              <div className="flex items-center gap-2 text-muted-700 font-bold text-sm">
                 <div className="w-2 h-2 rounded-full bg-success shadow-glow-success"></div>
-                Smart Upload Synchronized
+                Cloud Sync Active
              </div>
           </div>
         </div>
@@ -149,19 +150,20 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
         </motion.div>
       </div>
 
-      <div className="flex justify-between items-center mt-4">
+      <div className="flex justify-between items-center bg-white-02 p-4 rounded-2xl border border-white-05">
          <div className="admin-search-wrapper max-w-md">
             <Search className="search-icon-abs" size={18} />
             <input type="text" placeholder="Search index by title or team..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="admin-search-field" />
          </div>
-         <div className="flex gap-05 items-center">
+         <div className="flex gap-1 items-center">
             <button className="btn-action-pro btn-ghost px-6 py-2.5 rounded-xl"><Filter size={16} /> Filters</button>
+            <div className="v-line" style={{ height: '20px', margin: '0 10px' }}></div>
             <div className="text-muted-700 font-bold text-sm px-4">Displaying {filteredJobs.length} Positions</div>
          </div>
       </div>
 
       <div className="jobs-layout-grid">
-        {filteredJobs.map(job => (
+        {filteredJobs.length > 0 ? filteredJobs.map(job => (
           <motion.div
             key={job.id} layout className="glass-card" onClick={() => setExpandedId(expandedId === job.id ? null : job.id)}
             style={{ border: expandedId === job.id ? '1px solid var(--primary-glow)' : '1px solid var(--card-border)', background: expandedId === job.id ? 'hsla(217, 91%, 60%, 0.03)' : 'hsla(0,0%,100%,0.01)' }}
@@ -248,17 +250,23 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
                 )}
             </AnimatePresence>
           </motion.div>
-        ))}
+        )) : (
+            <div className="infra-msg-shell w-full" style={{ gridColumn: '1 / -1' }}>
+                <Briefcase size={40} className="mb-4 opacity-50 mx-auto" color="var(--primary)" />
+                <h3 className="text-white text-xl font-bold">No Positions Indexed</h3>
+                <p className="admin-desc-muted mt-2">Upload a JD PDF or create a manual posting to begin extraction.</p>
+            </div>
+        )}
       </div>
 
       <AnimatePresence>
         {showCreateForm && (
           <div className="modal-overlay">
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="glass-card pro-modal-frame">
-              <button onClick={() => setShowCreateForm(false)} className="modal-close-btn"><X size={24} /></button>
-              <div className="flex items-center gap-4 mb-12">
-                  <div className="bg-primary p-3 rounded-2xl shadow-glow-primary"><Brain size={32} color="white" /></div>
-                  <div><h3 className="text-white text-3xl font-black">Neural Extraction Result</h3><p className="admin-desc-muted text-base mt-1">Verify and finalize the AI-populated strategy.</p></div>
+            <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-card pro-modal-frame">
+              <button onClick={() => setShowCreateForm(false)} className="modal-close-btn"><X size={18} /></button>
+              <div className="flex items-center gap-3 mb-6">
+                  <div className="bg-primary p-2 rounded-lg shadow-glow-primary"><Brain size={20} color="white" /></div>
+                  <div><h3 className="text-white text-xl font-black">Neural Extraction Result</h3><p className="admin-desc-muted text-xs mt-0.5">Verify and finalize the AI-populated strategy.</p></div>
               </div>
               <form onSubmit={handleCreate}>
                  <div className="form-grid-3">
@@ -270,11 +278,11 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
                     <div className="flex-col gap-05"><label className="label-pro">Salary Range</label><input type="text" value={newJob.salary} onChange={(e) => setNewJob({...newJob, salary: e.target.value})} className="pro-input" /></div>
                     <div className="flex-col gap-05"><label className="label-pro">Job Type</label><select value={newJob.type} onChange={(e) => setNewJob({...newJob, type: e.target.value})} className="pro-input cursor-pointer"><option value="Full-Time">Full-Time</option><option value="Part-Time">Part-Time</option><option value="Internship">Internship</option><option value="Contract">Contract</option></select></div>
                  </div>
-                 <div className="flex-col gap-05 mb-6"><label className="label-pro">Skill Requirements (One per line)</label><textarea value={newJob.skills} onChange={(e) => setNewJob({...newJob, skills: e.target.value})} className="pro-input h-24" /></div>
-                 <div className="flex-col gap-05 mb-10"><label className="label-pro">Description & Summary</label><textarea value={newJob.description} onChange={(e) => setNewJob({...newJob, description: e.target.value})} className="pro-input h-36" required /></div>
-                 <div className="flex justify-end gap-3 mt-8">
-                    <button type="button" onClick={() => setShowCreateForm(false)} className="btn-action-pro btn-ghost px-8 py-3 rounded-xl border-none">Cancel</button>
-                    <button type="submit" className="btn-action-pro btn-primary h-14 px-12 rounded-2xl" disabled={isSubmitting}>{isSubmitting ? 'Syncing...' : 'Commit Strategy'}</button>
+                 <div className="flex-col gap-05 mb-4"><label className="label-pro">Skill Requirements (One per line)</label><textarea value={newJob.skills} onChange={(e) => setNewJob({...newJob, skills: e.target.value})} className="pro-input h-20" /></div>
+                 <div className="flex-col gap-05 mb-6"><label className="label-pro">Description & Summary</label><textarea value={newJob.description} onChange={(e) => setNewJob({...newJob, description: e.target.value})} className="pro-input h-28" required /></div>
+                 <div className="flex justify-end gap-3 mt-4">
+                    <button type="button" onClick={() => setShowCreateForm(false)} className="btn-action-pro btn-ghost px-6 py-2 rounded-lg border-none">Cancel</button>
+                    <button type="submit" className="btn-action-pro btn-primary h-11 px-6 rounded-lg" disabled={isSubmitting}>{isSubmitting ? 'Syncing...' : 'Commit Strategy'}</button>
                  </div>
               </form>
             </motion.div>

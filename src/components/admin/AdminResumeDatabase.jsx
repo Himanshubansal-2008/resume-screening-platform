@@ -82,9 +82,9 @@ const AdminResumeDatabase = ({ candidates, onOpenChat, onRefresh }) => {
   return (
     <div className="fadeIn admin-page-container">
       
-      <div className="flex items-center gap-15">
-        <div className="admin-search-wrapper">
-          <Search className="search-icon-abs" size={20} />
+      <div className="flex justify-between items-center bg-white-02 p-4 rounded-2xl border border-white-05">
+        <div className="admin-search-wrapper max-w-xl">
+          <Search className="search-icon-abs" size={18} />
           <input 
             type="text" 
             placeholder="Index search: Name, role, or technical keywords..." 
@@ -94,30 +94,32 @@ const AdminResumeDatabase = ({ candidates, onOpenChat, onRefresh }) => {
           />
         </div>
 
-        <button onClick={() => onOpenChat()} className="btn-action-pro btn-primary h-14 px-8">
+        <button onClick={() => onOpenChat()} className="btn-action-pro btn-primary h-12 px-8 rounded-xl">
             <Bot size={18} /> ASK HireAI
         </button>
       </div>
 
       <div className="filter-bar-shell flex justify-between items-center">
-        <div className="flex items-center">
-            <div className="flex items-center gap-1">
-                <Filter size={16} color="var(--primary)" />
-                <span className="text-muted-700 text-xs font-bold uppercase tracking-wider">Min Fit:</span>
-                <div className="flex gap-05">
-                    {[0, 70, 85, 95].map(m => (
-                        <button 
-                            key={m} 
-                            onClick={() => setMatchFilter(m)}
-                            className={`pill-btn-pro ${matchFilter === m ? 'active' : ''}`}
-                        >
-                            {m === 0 ? 'Any' : `${m}%+`}
-                        </button>
-                    ))}
-                </div>
+        <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
+                <SlidersHorizontal size={14} color="var(--primary)" />
+                <span className="text-muted-700 text-xs font-black uppercase tracking-widest">Filters</span>
             </div>
-            <div className="v-line"></div>
-            <div className="admin-desc-muted font-bold">
+            <div className="v-line" style={{ height: '20px', margin: '0 1.5rem' }}></div>
+            <div className="flex gap-05 items-center">
+                <span className="text-muted-700 text-xs font-bold uppercase mr-2">Min Fit:</span>
+                {[0, 70, 85, 95].map(m => (
+                    <button 
+                        key={m} 
+                        onClick={() => setMatchFilter(m)}
+                        className={`pill-btn-pro ${matchFilter === m ? 'active' : ''}`}
+                    >
+                        {m === 0 ? 'Any' : `${m}%+`}
+                    </button>
+                ))}
+            </div>
+            <div className="v-line" style={{ height: '20px', margin: '0 1.5rem' }}></div>
+            <div className="admin-desc-muted text-sm font-bold">
                 <span className="text-white">{filteredCandidates.length}</span> Profiles Indexed
             </div>
         </div>

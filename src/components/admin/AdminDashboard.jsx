@@ -43,7 +43,6 @@ const AdminDashboard = ({ candidates = [] }) => {
 
     return (
         <div className="fadeIn admin-page-container">
-            
             <div className="admin-kpi-grid">
                 {stats.map((stat, i) => (
                     <motion.div 
@@ -70,10 +69,10 @@ const AdminDashboard = ({ candidates = [] }) => {
                 ))}
             </div>
 
-            <div className="flex gap-3 items-start">
-                <div className="flex-1 flex-col gap-2">
-                    <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-1">
+            <div className="dashboard-main-layout">
+                <div className="dashboard-left-panel">
+                    <div className="flex justify-between items-center mb-6">
+                        <div className="flex items-center gap-2">
                             <div className="admin-section-header-icon"><Sparkles size={22} /></div>
                             <div>
                                 <h3 className="admin-title-main">Top Predicted Fits</h3>
@@ -97,14 +96,14 @@ const AdminDashboard = ({ candidates = [] }) => {
                                     transition={{ delay: 0.3 + (i * 0.05) }}
                                     onClick={() => setSelectedCandidate(candidate)}
                                     className="glass-card admin-item-card"
-                                    whileHover={{ scale: 1.01 }}
+                                    whileHover={{ scale: 1.005 }}
                                 >
                                     <div className="admin-avatar-box"><User size={22} color="white" /></div>
                                     <div className="flex-1 min-w-0">
                                         <h4 className="card-title-white">{candidate.name}</h4>
                                         <p className="card-role-text">{displayRole}</p>
                                     </div>
-                                    <div className="flex-2">
+                                    <div className="flex-2 hidden-mobile">
                                         <p className="card-summary-clamped">{displaySummary}</p>
                                     </div>
                                     <div className="match-score-indicator">
@@ -116,19 +115,19 @@ const AdminDashboard = ({ candidates = [] }) => {
                             );
                         }) : (
                             <div className="infra-msg-shell">
-                                <Users size={40} className="mb-1 opacity-50" />
+                                <Users size={40} className="mb-2 opacity-50 mx-auto" />
                                 <p className="admin-desc-muted">Waiting for Ingestion Data</p>
                             </div>
                         )}
                     </div>
                 </div>
 
-                <div className="flex-col gap-2" style={{ width: '380px' }}>
+                <div className="dashboard-right-panel">
                     <div className="glass-card diagnostic-container">
                         <h4 className="diagnostic-title">
                             <Activity size={18} color="var(--primary)" /> Engine Diagnostics
                         </h4>
-                        <div className="flex-col gap-15">
+                        <div className="flex-col gap-1">
                             <div className="flex-col gap-05">
                                 <div className="prog-item-row">
                                     <span>POOL SHORTLISTED (85%+)</span>
@@ -162,13 +161,13 @@ const AdminDashboard = ({ candidates = [] }) => {
                             <Bot size={18} color="var(--primary)" /> Intelligence Tip
                         </h4>
                         <p className="card-role-text text-white">Match quality up by {Math.round(avgMatchRate/4)}% this week. Adjust technical weights.</p>
-                        <button className="nav-item-pro items-center justify-center active">Optimize Matrix</button>
+                        <button className="btn-action-pro btn-primary w-full mt-2">Optimize Matrix</button>
                     </div>
                 </div>
             </div>
 
             <TalentProfileModal isOpen={!!selectedCandidate} onClose={() => setSelectedCandidate(null)} candidate={selectedCandidate} />
-            <div className="infra-msg-shell"><p className="infra-text">RECRUITMENT INFRASTRUCTURE : STANDBY</p></div>
+            <div className="infra-msg-shell" style={{ opacity: 0.2, marginTop: '2rem' }}><p className="infra-text text-xs font-black tracking-widest uppercase">RECRUITMENT INFRASTRUCTURE : STANDBY</p></div>
         </div>
     );
 };
