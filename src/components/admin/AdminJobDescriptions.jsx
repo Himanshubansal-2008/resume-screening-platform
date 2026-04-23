@@ -96,6 +96,15 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
     } catch (err) { alert(`Error: ${err.message}`); } finally { setIsSubmitting(false); }
   };
 
+  const handleDelete = async (e, id) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this job posting? This will also remove associated applications.")) return;
+    try {
+        const res = await fetch(`http://localhost:5001/api/jobs/${id}`, { method: 'DELETE' });
+        if (res.ok) if (onRefresh) onRefresh();
+    } catch (err) { alert(err.message); }
+  };
+
   return (
     <div className="fadeIn admin-page-container">
       <div className="admin-upload-container">
@@ -164,7 +173,11 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
         {filteredJobs.map(job => (
           <motion.div
             key={job.id} layout className="glass-card" onClick={() => setExpandedId(expandedId === job.id ? null : job.id)}
-            style={{ border: expandedId === job.id ? '1px solid var(--primary-glow)' : '1px solid var(--card-border)', background: expandedId === job.id ? 'hsla(217, 91%, 60%, 0.03)' : 'hsla(0,0%,100%,0.01)' }}
+            style={{ 
+                border: expandedId === job.id ? '1px solid var(--primary-glow)' : '1px solid var(--card-border)', 
+                background: expandedId === job.id ? 'hsla(217, 91%, 60%, 0.03)' : 'hsla(0,0%,100%,0.01)',
+                padding: '2.5rem'
+            }}
           >
             <div className="flex justify-between items-start mb-6">
                 <div className="flex gap-1">
@@ -177,7 +190,7 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
                         </div>
                     </div>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); }} className="btn-action-pro text-danger-60 p-1.5 bg-transparent border-none hover:bg-danger-10 rounded-lg"><Trash2 size={16} /></button>
+                <button onClick={(e) => handleDelete(e, job.id)} className="card-icon-button danger-ghost w-10 h-10 flex items-center justify-center"><Trash2 size={18} /></button>
             </div>
 
             <div className="flex gap-2 flex-wrap mb-5">

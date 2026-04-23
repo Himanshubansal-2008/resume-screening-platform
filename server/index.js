@@ -410,6 +410,41 @@ app.get('/api/jobs', async (req, res) => {
     }
 });
 
+// 2. Candidate Update (Notes etc)
+app.patch('/api/candidates/:id', async (req, res) => {
+    try {
+        const { notes, status } = req.body;
+        const candidate = await prisma.candidate.update({
+            where: { id: parseInt(req.params.id) },
+            data: { 
+                ...(notes !== undefined && { notes }),
+                ...(status !== undefined && { status })
+            }
+        });
+        res.json(candidate);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 2.1 Delete Candidate
+app.delete('/api/candidates/:id', async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        // Delete related resumes first (if not handled by Cascade in DB)
+        await prisma.resume.deleteMany({ where: { candidateId: id } });
+        // Delete related applications
+        await prisma.application.deleteMany({ where: { candidateId: id } });
+        // Delete related interviews
+        await prisma.interview.deleteMany({ where: { candidateId: id } });
+        
+        await prisma.candidate.delete({ where: { id } });
+        res.json({ message: "Candidate purged from neural record" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // 2.5 Applications
 app.post('/api/applications', async (req, res) => {
     try {

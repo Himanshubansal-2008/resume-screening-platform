@@ -104,7 +104,11 @@ const AIChatbotSidebar = ({ isOpen, onClose, candidates, activeCandidate }) => {
     const userMessage = { id: Date.now(), role: 'user', text: input };
     setMessages(prev => [...prev, userMessage]); setInput(""); setIsLoading(true); setError(null);
     try {
-        const history = [{ role: "system", content: getSystemPrompt(activeCandidate) }, ...messages.map(m => ({ role: m.role === 'bot' ? 'assistant' : 'user', content: m.text })), { role: "user", content: input }];
+        const history = [
+            { role: "system", content: getSystemPrompt(activeCandidate, candidates) }, 
+            ...messages.map(m => ({ role: m.role === 'bot' ? 'assistant' : 'user', content: m.text })), 
+            { role: "user", content: input }
+        ];
         const aiResponse = await queryAI(history);
         if (aiResponse && (aiResponse.content || aiResponse.reasoning_content)) {
             setMessages(prev => [...prev, { id: Date.now() + 1, role: 'bot', text: aiResponse.content || "", reasoning: aiResponse.reasoning_content || null }]);
