@@ -14,9 +14,10 @@ const upload = multer();
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+// <<<<<<< HEAD
 // Allow both development and production origins
 const allowedOrigins = [
-  'http://localhost:5173',
+  'http://localhost:5174',
   'http://localhost:3000',
   'https://resume-screening-platform.vercel.app'
 ];
@@ -33,6 +34,15 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+// =======
+// // Ensure uploads directory exists
+// const uploadsDir = path.join(__dirname, 'uploads');
+// if (!fs.existsSync(uploadsDir)){
+//     fs.mkdirSync(uploadsDir, { recursive: true });
+// }
+
+// app.use(cors());
+// >>>>>>> vivek
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -739,12 +749,40 @@ app.post('/api/interviews', async (req, res) => {
     }
 });
 
-if (process.env.NODE_ENV !== 'test') {
-    app.listen(PORT, '0.0.0.0', () => {
-        console.log(`Backend running with Neural Gemini Engine at http://0.0.0.0:${PORT}`);
-        console.log(`[Config] Groq Key: ${process.env.GROQ_API_KEY ? 'LOADED' : 'MISSING'}`);
-        console.log(`[Config] Gemini Keys: ${process.env.GEMINI_API_KEYS ? 'LOADED' : 'MISSING'}`);
-    });
-}
+// <<<<<<< HEAD
+// if (process.env.NODE_ENV !== 'test') {
+//     app.listen(PORT, '0.0.0.0', () => {
+//         console.log(`Backend running with Neural Gemini Engine at http://0.0.0.0:${PORT}`);
+//         console.log(`[Config] Groq Key: ${process.env.GROQ_API_KEY ? 'LOADED' : 'MISSING'}`);
+//         console.log(`[Config] Gemini Keys: ${process.env.GEMINI_API_KEYS ? 'LOADED' : 'MISSING'}`);
+//     });
+// }
 
-module.exports = app;
+// module.exports = app;
+// =======
+app.patch('/api/interviews/:id/feedback', async (req, res) => {
+    try {
+        const { rating, comment } = req.body;
+        const interviewId = parseInt(req.params.id);
+        
+        const updated = await prisma.interview.update({
+            where: { id: interviewId },
+            data: {
+                candidateRating: parseInt(rating),
+                candidateComment: comment
+            }
+        });
+        
+        res.json(updated);
+    } catch (error) {
+        console.error("Feedback Save Error:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Backend running with Neural Gemini Engine at http://0.0.0.0:${PORT}`);
+    console.log(`[Config] Groq Key: ${process.env.GROQ_API_KEY ? 'LOADED (' + process.env.GROQ_API_KEY.slice(0, 8) + '...)' : 'MISSING'}`);
+    console.log(`[Config] Gemini Keys: ${process.env.GEMINI_API_KEYS ? 'LOADED' : 'MISSING'}`);
+});
+// >>>>>>> vivek

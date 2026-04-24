@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Video, VideoOff, Phone, Activity, Bot } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, Phone, Activity, Bot, Sparkles, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import './candidate.css';
 import { API_BASE_URL } from '../../apiConfig';
@@ -15,6 +15,13 @@ const CandidateSimulation = ({ myProfile, activeInterviewApp, setActiveTab }) =>
   const [transcript, setTranscript] = useState("");
   const [techQuestionCount, setTechQuestionCount] = useState(0);
   const [silenceStrikes, setSilenceStrikes] = useState(0);
+
+  // Feedback State
+  const [lastInterviewId, setLastInterviewId] = useState(null);
+  const [rating, setRating] = useState(0);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
   const videoRef = useRef(null);
   const silenceTimeoutRef = useRef(null);
@@ -257,6 +264,7 @@ const endCall = async () => {
   // Save session to history
   try {
     await fetch(`${API_BASE_URL}/api/interviews`, {
+
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -265,9 +273,28 @@ const endCall = async () => {
         transcript: messages
       })
     });
+    const data = await res.json();
+    if (data.id) setLastInterviewId(data.id);
     console.log("[Simulation] Interview saved to history");
   } catch (err) {
     console.error("[Simulation] Failed to save interview:", err);
+  }
+};
+
+const submitFeedback = async () => {
+  if (!lastInterviewId) return;
+  setIsSubmittingFeedback(true);
+  try {
+    const res = await fetch(`http://localhost:5001/api/interviews/${lastInterviewId}/feedback`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rating, comment: feedbackText })
+    });
+    if (res.ok) setFeedbackSubmitted(true);
+  } catch (err) {
+    console.error("Failed to submit feedback:", err);
+  } finally {
+    setIsSubmittingFeedback(false);
   }
 };
 
@@ -303,7 +330,56 @@ if (callState === 'ended') {
       <div className="glass-card cs-sim-ended-card">
         <div className="cs-sim-ended-icon-box"><Activity size={40} color="#10b981" /></div>
         <h2 className="cs-sim-ended-title">Interview Completed</h2>
-        <button onClick={() => setActiveTab('jobboard')} className="btn-action-pro btn-primary cs-sim-btn-return">Return Home</button>
+        
+        {!feedbackSubmitted ? (
+          <div className="cs-sim-feedback-form">
+            <p className="cs-sim-feedback-subtitle">How was your experience with HireAI?</p>
+            
+            <div className="cs-sim-stars">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setRating(star)}
+                  className={`cs-sim-star-btn ${rating >= star ? 'active' : ''}`}
+                >
+                  <Sparkles size={24} />
+                </button>
+              ))}
+            </div>
+
+            <textarea
+              value={feedbackText}
+              onChange={(e) => setFeedbackText(e.target.value)}
+              placeholder="Share your thoughts on the AI's questions or technical depth..."
+              className="cs-sim-feedback-textarea"
+            />
+
+            <button 
+              onClick={submitFeedback}
+              disabled={isSubmittingFeedback || rating === 0}
+              className="btn-action-pro btn-primary cs-sim-btn-feedback"
+            >
+              {isSubmittingFeedback ? "Submitting..." : "Submit Feedback"}
+            </button>
+          </div>
+        ) : (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }} 
+            animate={{ opacity: 1, y: 0 }}
+            className="cs-sim-feedback-success"
+          >
+            <CheckCircle size={20} color="#10b981" />
+            <span>Thank you for your feedback!</span>
+          </motion.div>
+        )}
+
+        <button 
+          onClick={() => setActiveTab('jobboard')} 
+          className="btn-action-pro btn-ghost cs-sim-btn-return"
+          style={{ marginTop: '1.5rem' }}
+        >
+          Return Home
+        </button>
       </div>
     </div>
   );

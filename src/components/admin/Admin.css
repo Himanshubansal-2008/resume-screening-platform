@@ -280,9 +280,10 @@
     color: var(--text-dim);
     font-size: 0.95rem;
     line-height: 1.6;
-    display: -webkit-box;
+    line-clamp: 2;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
+    display: -webkit-box;
     overflow: hidden;
 }
 
@@ -560,6 +561,7 @@
 
 .chat-title-brand span {
     background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+    background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     filter: drop-shadow(0 0 10px var(--primary-glow));
@@ -820,8 +822,8 @@
 
 .job-details-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
 }
 
 .infra-msg-shell {
@@ -1100,13 +1102,21 @@
 }
 
 .pill-primary-xs {
-    padding: 4px 10px;
-    background: hsla(217, 91%, 60%, 0.08);
-    border: 1px solid hsla(217, 91%, 60%, 0.15);
+    padding: 6px 12px;
+    background: hsla(217, 91%, 60%, 0.1);
+    border: 1px solid hsla(217, 91%, 60%, 0.2);
     color: var(--primary);
-    border-radius: 6px;
-    font-size: 0.68rem;
+    border-radius: 10px;
+    font-size: 0.72rem;
     font-weight: 800;
+    white-space: nowrap;
+    transition: all 0.3s var(--transition);
+}
+
+.pill-primary-xs:hover {
+    background: hsla(217, 91%, 60%, 0.2);
+    border-color: var(--primary);
+    transform: translateY(-2px);
 }
 
 .pill-badge-primary {
@@ -1132,6 +1142,7 @@
     to { transform: rotate(360deg); }
 }
 
+<<<<<<< HEAD
 /* ── TALENT PROFILE MODAL ── */
 .talent-modal-frame {
     width: min(1000px, 95vw);
@@ -1142,10 +1153,59 @@
     border-radius: 32px;
     box-shadow: 0 40px 100px -20px rgba(0,0,0,0.5), 
                 0 0 40px -10px hsla(217, 91%, 60%, 0.2);
+=======
+/* ── Active Applicants & Candidate Rows ── */
+.applicants-panel {
+    background: hsla(0, 0%, 100%, 0.02);
+    padding: 2rem;
+    border-radius: 24px;
+    border: 1px dashed var(--card-border);
+}
+
+.applicants-header {
+    color: white;
+    font-weight: 900;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.applicant-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.applicant-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: hsla(0, 0%, 100%, 0.03);
+    padding: 0.85rem 1.25rem;
+    border-radius: 16px;
+    border: 1px solid var(--card-border);
+    cursor: pointer;
+    transition: all 0.3s var(--transition);
+}
+
+.applicant-row:hover {
+    background: hsla(217, 91%, 60%, 0.06);
+    border-color: hsla(217, 91%, 60%, 0.25);
+    transform: translateX(6px);
+    box-shadow: 0 10px 20px -10px rgba(0,0,0,0.3);
+}
+
+.applicant-info {
+>>>>>>> vivek
     display: flex;
     flex-direction: column;
 }
 
+<<<<<<< HEAD
 .talent-modal-header {
     padding: 2.5rem 3rem;
     background: linear-gradient(to right, hsla(217, 91%, 60%, 0.08), transparent);
@@ -1193,3 +1253,207 @@
         padding: 2rem;
     }
 }
+=======
+.applicant-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 2px;
+}
+
+.applicant-name {
+    color: white;
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.applicant-email {
+    color: var(--text-dim);
+    font-size: 0.78rem;
+}
+
+.applicant-resume-badge {
+    padding: 2px 8px;
+    background: hsla(217, 91%, 60%, 0.1);
+    color: var(--primary);
+    font-size: 0.65rem;
+    border-radius: 6px;
+    font-weight: 800;
+    border: 1px solid hsla(217, 91%, 60%, 0.15);
+}
+
+.applicant-match-badge {
+    padding: 6px 12px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+}
+
+.match-high {
+    background: hsla(150, 80%, 45%, 0.15);
+    color: var(--success);
+    border: 1px solid hsla(150, 80%, 45%, 0.2);
+}
+
+.match-med {
+    background: hsla(0, 0%, 100%, 0.05);
+    color: var(--text-dim);
+    border: 1px solid var(--card-border);
+}
+
+/* ── JD Expansion Styles ── */
+.summary-highlight-box {
+    background: linear-gradient(135deg, hsla(217, 91%, 60%, 0.1) 0%, hsla(190, 90%, 50%, 0.05) 100%);
+    border: 1px solid hsla(217, 91%, 60%, 0.2);
+    padding: 1.5rem 2rem;
+    border-radius: 20px;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.summary-highlight-box::before {
+    content: 'QUICK SUMMARY';
+    position: absolute;
+    top: 12px;
+    right: 20px;
+    font-size: 0.6rem;
+    font-weight: 900;
+    color: var(--primary);
+    opacity: 0.5;
+    letter-spacing: 0.2em;
+}
+
+.jd-data-section {
+    background: hsla(0, 0%, 100%, 0.02);
+    padding: 1.5rem;
+    border-radius: 18px;
+    border: 1px solid hsla(0, 0%, 100%, 0.05);
+}
+
+.jd-data-title {
+    font-size: 0.75rem;
+    font-weight: 900;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.jd-data-content {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+.grid-cols-2-gap-2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+/* ── Resume-Style JD Sections ── */
+.resume-section-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    margin-top: 2.5rem;
+}
+
+.resume-style-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.resume-section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 900;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+
+.resume-section-header.blue { color: var(--primary); }
+.resume-section-header.cyan { color: var(--secondary); }
+.resume-section-header.orange { color: var(--warning); }
+.resume-section-header.purple { color: #a78bfa; }
+
+.resume-style-item {
+    border-left: 2px solid hsla(0, 0%, 100%, 0.1);
+    padding-left: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.resume-style-item.blue { border-color: hsla(217, 91%, 60%, 0.3); }
+.resume-style-item.orange { border-color: hsla(40, 95%, 55%, 0.3); }
+.resume-style-item.purple { border-color: hsla(260, 80%, 70%, 0.3); }
+
+.resume-item-label {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 800;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+}
+
+.resume-item-label.blue { color: var(--primary); }
+.resume-item-label.orange { color: var(--warning); }
+.resume-item-label.purple { color: #a78bfa; }
+
+.resume-item-value {
+    color: var(--text-dim);
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.resume-pill-cyan {
+    background: hsla(190, 90%, 50%, 0.1);
+    color: var(--secondary);
+    border: 1px solid hsla(190, 90%, 50%, 0.2);
+    padding: 8px 16px;
+    border-radius: 12px;
+    font-size: 0.82rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.ai-recommendation-card {
+    background: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 20px;
+    border: 1px solid var(--card-border);
+    border-left: 4px solid var(--primary);
+    margin-bottom: 2.5rem;
+}
+
+/* ── Final Layout Optimization ── */
+.resume-section-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 3rem;
+    margin-top: 2.5rem;
+}
+
+@media (max-width: 1024px) {
+    .resume-section-container {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+}
+
+.ai-recommendation-card {
+    padding: 1.5rem 1.75rem;
+    background: hsla(217, 91%, 60%, 0.05);
+    border: 1px solid hsla(217, 91%, 60%, 0.15);
+    border-radius: 16px;
+    margin-bottom: 2rem;
+}
+>>>>>>> vivek

@@ -125,9 +125,10 @@ const AIChatbotSidebar = ({ isOpen, onClose, candidates, activeCandidate }) => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 bg-black-60 backdrop-blur-sm z-1000" />
           <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="ai-copilot-shell">
             <div className="sidebar-header-pro">
-              <div className="flex items-center gap-3">
-                <div className="bg-primary-15 p-2 rounded-xl border border-primary-20 flex items-center justify-center">
-                  <Sparkles className="text-primary" size={20} />
+
+              <div className="flex items-center gap-6">
+                <div className="bg-primary-15 p-3 rounded-2xl border border-primary-20 flex items-center justify-center">
+                  <Sparkles className="text-primary" size={24} />
                 </div>
                 <div>
                   <h3 className="chat-title-brand text-xl">HireAI <span>Copilot</span></h3>
