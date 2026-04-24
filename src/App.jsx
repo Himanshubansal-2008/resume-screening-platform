@@ -18,13 +18,14 @@ import CandidatePrepHub from './components/candidate/CandidatePrepHub';
 import CandidateProfile from './components/candidate/CandidateProfile';
 import CandidateSimulation from './components/candidate/CandidateSimulation';
 import CandidateHistory from './components/candidate/CandidateHistory';
+import { API_BASE_URL } from './apiConfig';
 
 const ADMIN_EMAILS = [
   "himanshubansal1803@gmail.com", "nikhiltelkar19@gmail.com", 
-  "hartejsinghsandhu2806@gmail.com", "vivekkrishna7985@gmail.com"
+  "hartejsinghsandhu2806@gmail.com", "vivekkrishna7985@gmail.com","yashvendra.singh@newtonschool.co"
 ];
 
-const API_BASE_URL = "http://localhost:5001/api";
+const API_FULL_URL = `${API_BASE_URL}/api`;
 
 const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candidates, jobs, onRefresh, recommendations, activeInterviewApp, setActiveInterviewApp, theme, onToggleTheme, isChatOpen, activeChatCandidate }) => {
   const isAdmin = role === 'admin';
@@ -213,8 +214,8 @@ const App = () => {
     if (!user) return;
     try {
       const [candRes, jobsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/candidates`),
-        fetch(`${API_BASE_URL}/jobs`)
+        fetch(`${API_FULL_URL}/candidates`),
+        fetch(`${API_FULL_URL}/jobs`)
       ]);
       const candData = await candRes.json();
       const jobsData = await jobsRes.json();
@@ -223,7 +224,7 @@ const App = () => {
 
       if (!isAdmin) {
           const userEmail = user?.primaryEmailAddress?.emailAddress;
-          const recRes = await fetch(`${API_BASE_URL}/candidates/recommendations?email=${userEmail}`);
+          const recRes = await fetch(`${API_FULL_URL}/candidates/recommendations?email=${userEmail}`);
           const recData = await recRes.json();
           if (Array.isArray(recData)) setRecommendations(recData);
       }

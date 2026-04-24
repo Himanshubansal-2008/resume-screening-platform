@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, Video, VideoOff, Phone, Activity, Bot } from 'lucide-react';
 import { motion } from 'framer-motion';
 import './candidate.css';
+import { API_BASE_URL } from '../../apiConfig';
 
 const CandidateSimulation = ({ myProfile, activeInterviewApp, setActiveTab }) => {
   const [callState, setCallState] = useState('lobby');
@@ -55,7 +56,7 @@ const CandidateSimulation = ({ myProfile, activeInterviewApp, setActiveTab }) =>
           // Use sendBeacon for reliable delivery on unmount
           // Use Blob with JSON type for standard backend compatibility
           const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-          navigator.sendBeacon('http://localhost:5001/api/interviews', blob);
+          navigator.sendBeacon(`${API_BASE_URL}/api/interviews`, blob);
         }
       }
       window.speechSynthesis.cancel();
@@ -154,7 +155,7 @@ const submitSpeech = async (text, isSystemSilence = false) => {
   const newHistory = [...messages, userMessage];
   setMessages(newHistory);
   try {
-    const res = await fetch('http://localhost:5001/api/interview/chat', {
+    const res = await fetch(`${API_BASE_URL}/api/interview/chat`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages: newHistory })
     });
@@ -255,7 +256,7 @@ const endCall = async () => {
 
   // Save session to history
   try {
-    await fetch('http://localhost:5001/api/interviews', {
+    await fetch(`${API_BASE_URL}/api/interviews`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

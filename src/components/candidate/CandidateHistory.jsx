@@ -6,6 +6,7 @@ import {
   ArrowLeft, Star, FileText, CheckCircle2, ShieldCheck,
   TrendingUp, Sparkles, Cpu
 } from 'lucide-react';
+import { API_BASE_URL } from '../../apiConfig';
 
 const CandidateHistory = ({ user, myProfile }) => {
   const [interviews, setInterviews] = useState([]);
@@ -27,7 +28,7 @@ const CandidateHistory = ({ user, myProfile }) => {
     if (!user?.primaryEmailAddress?.emailAddress) return;
     try {
       setLoading(true);
-      const res = await fetch(`http://localhost:5001/api/interviews/${user.primaryEmailAddress.emailAddress}`);
+      const res = await fetch(`${API_BASE_URL}/api/interviews/${user.primaryEmailAddress.emailAddress}`);
       const data = await res.json();
       setInterviews(Array.isArray(data) ? data : []);
     } catch (err) {

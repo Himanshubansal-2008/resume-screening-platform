@@ -10,8 +10,10 @@ import {
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import './candidate.css';
 
+import { API_BASE_URL } from '../../apiConfig';
+
 const MAX_RESUMES = 4;
-const API_BASE = 'http://localhost:5001/api';
+const API_BASE = `${API_BASE_URL}/api`;
 
 /* ── Avatar ── */
 const Avatar = ({ user, size = 96 }) => {

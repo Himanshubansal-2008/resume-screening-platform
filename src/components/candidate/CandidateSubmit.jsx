@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useUser } from '@clerk/clerk-react';
 import LiveKeywordStream from '../shared/LiveKeywordStream';
 import './candidate.css';
+import { API_BASE_URL } from '../../apiConfig';
 
 const CandidateSubmit = ({ setActiveTab, onRefresh }) => {
   const [uploadState, setUploadState] = useState('idle');
@@ -26,7 +27,7 @@ const CandidateSubmit = ({ setActiveTab, onRefresh }) => {
     const email = user?.primaryEmailAddress?.emailAddress;
     if (email) {
       try {
-        const checkRes = await fetch(`http://localhost:5001/api/candidates/${email}/resumes`);
+        const checkRes = await fetch(`${API_BASE_URL}/api/candidates/${email}/resumes`);
         const existing = await checkRes.json();
         if (existing.length >= 4) { alert("You can store up to 4 resumes. Please delete one from your profile first."); return; }
       } catch (err) { console.error("Failed to check resume limit:", err); }
@@ -41,7 +42,7 @@ const CandidateSubmit = ({ setActiveTab, onRefresh }) => {
     formData.append('role', "Software Engineer Applicant");
     formData.append('resumeTitle', resumeTitle.trim() !== '' ? resumeTitle.trim() : file.name);
     try {
-      const response = await fetch('http://localhost:5001/api/candidates', { method: 'POST', body: formData });
+      const response = await fetch(`${API_BASE_URL}/api/candidates`, { method: 'POST', body: formData });
       if (!response.ok) throw new Error("Upload failed");
       const data = await response.json();
       setExtractedName(data.name);

@@ -26,6 +26,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import LiveKeywordStream from '../shared/LiveKeywordStream';
 import TalentProfileModal from '../shared/TalentProfileModal';
+import { API_BASE_URL } from '../../apiConfig';
 import './Admin.css';
 
 const formatTimeAgo = (dateString) => {
@@ -71,7 +72,7 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
     const formData = new FormData();
     formData.append('jdPdf', file);
     try {
-      const res = await fetch('http://localhost:5001/api/jobs/upload', { method: 'POST', body: formData });
+      const res = await fetch(`${API_BASE_URL}/api/jobs/upload`, { method: 'POST', body: formData });
       const data = await res.json();
       if (!res.ok) { alert(`Extraction failed: ${data.error}`); setIsAnalyzing(false); return; }
       setShowSuccessPulse(true);
@@ -91,7 +92,7 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
     e.preventDefault(); setIsSubmitting(true);
     try {
       const payload = { ...newJob, skills: newJob.skills.split('\n').filter(s => s.trim() !== ''), salary: newJob.salary || 'Competitive' };
-      const res = await fetch('http://localhost:5001/api/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const res = await fetch(`${API_BASE_URL}/api/jobs`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       if (res.ok) { setShowCreateForm(false); if (onRefresh) onRefresh(); }
     } catch (err) { alert(`Error: ${err.message}`); } finally { setIsSubmitting(false); }
   };

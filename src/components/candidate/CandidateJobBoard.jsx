@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Briefcase, MapPin, DollarSign, Sparkles, ChevronRight, CheckCircle2, Search, Zap, Send, Users, Globe, Gift, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './candidate.css';
+import { API_BASE_URL } from '../../apiConfig';
 
 const formatTimeAgo = (dateString) => {
   if (!dateString) return 'recently';
@@ -35,7 +36,7 @@ const CandidateJobBoard = ({ user, allJobs, recommendations = [], myProfile, onR
     const fetchResumes = async () => {
       if (!myProfile?.email) return;
       try {
-        const res = await fetch(`http://localhost:5001/api/candidates/${myProfile.email}/resumes`);
+        const res = await fetch(`${API_BASE_URL}/api/candidates/${myProfile.email}/resumes`);
         if (res.ok) {
           const data = await res.json();
           setResumes(data);
@@ -72,7 +73,7 @@ const CandidateJobBoard = ({ user, allJobs, recommendations = [], myProfile, onR
       if (!window.confirm("Are you sure you want to cancel your application?")) return;
       setProcessingId(jobId);
       try {
-        const res = await fetch(`http://localhost:5001/api/applications/${myProfile.email}/${jobId}`, { method: 'DELETE' });
+        const res = await fetch(`${API_BASE_URL}/api/applications/${myProfile.email}/${jobId}`, { method: 'DELETE' });
         if (res.ok && onRefresh) await onRefresh();
       } catch(e) { console.error("Cancellation failed", e); }
       finally { setProcessingId(null); }
@@ -88,7 +89,7 @@ const CandidateJobBoard = ({ user, allJobs, recommendations = [], myProfile, onR
     setProcessingId(applyingJobId);
     try {
       const payload = { candidateEmail: myProfile.email, jobId: applyingJobId, resumeName: selectedResume.name, resumeScore: selectedResume.score, resumeSummary: selectedResume.summary, resumeSkills: myProfile.skills || [] };
-      const res = await fetch('http://localhost:5001/api/applications', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const res = await fetch(`${API_BASE_URL}/api/applications`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       if (res.ok && onRefresh) await onRefresh();
     } catch(err) { console.error("Apply failed", err); }
     finally { setProcessingId(null); setApplyingJobId(null); }

@@ -24,6 +24,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import NotesModal from '../shared/NotesModal';
 import TalentProfileModal from '../shared/TalentProfileModal';
+import { API_BASE_URL } from '../../apiConfig';
 import './Admin.css';
 
 const AdminResumeDatabase = ({ candidates, onOpenChat, onRefresh }) => {
@@ -54,7 +55,7 @@ const AdminResumeDatabase = ({ candidates, onOpenChat, onRefresh }) => {
     const id = selectedCandidateForNotes.id;
     setSavingId(id);
     try {
-        const res = await fetch(`http://localhost:5001/api/candidates/${id}`, {
+        const res = await fetch(`${API_BASE_URL}/api/candidates/${id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ notes })

@@ -470,7 +470,8 @@ app.post('/api/candidates', upload.single('resumePdf'), async (req, res) => {
             const uniqueFilename = `${Date.now()}-${safeName}`;
             const filePath = path.join(__dirname, 'uploads', uniqueFilename);
             fs.writeFileSync(filePath, req.file.buffer);
-            fileUrl = `http://localhost:5001/uploads/${uniqueFilename}`;
+            const baseUrl = process.env.BACKEND_URL || `http://localhost:${PORT}`;
+            fileUrl = `${baseUrl}/uploads/${uniqueFilename}`;
         }
 
         console.log(`[Neural Engine] Analyzing resume for ${email}...`);
@@ -685,8 +686,12 @@ app.post('/api/interviews', async (req, res) => {
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Backend running with Neural Gemini Engine at http://0.0.0.0:${PORT}`);
-    console.log(`[Config] Groq Key: ${process.env.GROQ_API_KEY ? 'LOADED (' + process.env.GROQ_API_KEY.slice(0, 8) + '...)' : 'MISSING'}`);
-    console.log(`[Config] Gemini Keys: ${process.env.GEMINI_API_KEYS ? 'LOADED' : 'MISSING'}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`Backend running with Neural Gemini Engine at http://0.0.0.0:${PORT}`);
+        console.log(`[Config] Groq Key: ${process.env.GROQ_API_KEY ? 'LOADED' : 'MISSING'}`);
+        console.log(`[Config] Gemini Keys: ${process.env.GEMINI_API_KEYS ? 'LOADED' : 'MISSING'}`);
+    });
+}
+
+module.exports = app;
