@@ -216,6 +216,11 @@ const App = () => {
         fetch(`${API_BASE_URL}/candidates`),
         fetch(`${API_BASE_URL}/jobs`)
       ]);
+
+      if (!candRes.ok || !jobsRes.ok) {
+        throw new Error(`Server responded with error: ${candRes.status} / ${jobsRes.status}`);
+      }
+
       const candData = await candRes.json();
       const jobsData = await jobsRes.json();
       setCandidates(Array.isArray(candData) ? candData : []);
@@ -224,8 +229,10 @@ const App = () => {
       if (!isAdmin) {
           const userEmail = user?.primaryEmailAddress?.emailAddress;
           const recRes = await fetch(`${API_BASE_URL}/candidates/recommendations?email=${userEmail}`);
-          const recData = await recRes.json();
-          if (Array.isArray(recData)) setRecommendations(recData);
+          if (recRes.ok) {
+            const recData = await recRes.json();
+            if (Array.isArray(recData)) setRecommendations(recData);
+          }
       }
     } catch (error) {
       console.error("Critical Fetch Error:", error);
