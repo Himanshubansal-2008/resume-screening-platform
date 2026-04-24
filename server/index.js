@@ -14,6 +14,12 @@ const upload = multer();
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)){
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -716,6 +722,26 @@ app.post('/api/interviews', async (req, res) => {
         res.json(interview);
     } catch (error) {
         console.error("Interview Save Error:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.patch('/api/interviews/:id/feedback', async (req, res) => {
+    try {
+        const { rating, comment } = req.body;
+        const interviewId = parseInt(req.params.id);
+        
+        const updated = await prisma.interview.update({
+            where: { id: interviewId },
+            data: {
+                candidateRating: parseInt(rating),
+                candidateComment: comment
+            }
+        });
+        
+        res.json(updated);
+    } catch (error) {
+        console.error("Feedback Save Error:", error);
         res.status(500).json({ error: error.message });
     }
 });

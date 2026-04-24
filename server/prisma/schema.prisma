@@ -98,5 +98,7 @@ model Interview {
   overallScore    Int?      @default(0)
   feedback        String?
   analysis        Json?     // Detailed metadata for the report
+  candidateRating Int?      // Stars (1-5)
+  candidateComment String?  // Textual feedback
   createdAt       DateTime  @default(now())
 }
