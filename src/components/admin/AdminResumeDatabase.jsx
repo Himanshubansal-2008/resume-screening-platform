@@ -80,6 +80,20 @@ const AdminResumeDatabase = ({ candidates, onOpenChat, onRefresh }) => {
     }
   };
 
+  const handleDelete = async (e, id) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to permanently delete this candidate profile?")) return;
+    
+    try {
+        const res = await fetch(`http://localhost:5001/api/candidates/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+            if (onRefresh) onRefresh();
+        }
+    } catch (error) {
+        console.error("Error deleting candidate:", error);
+    }
+  };
+
   return (
     <div className="fadeIn admin-page-container">
       
@@ -141,7 +155,7 @@ const AdminResumeDatabase = ({ candidates, onOpenChat, onRefresh }) => {
         </div>
       </div>
 
-      <div className={viewMode === 'grid' ? 'jobs-layout-grid' : 'flex-col gap-1'}>
+      <div className={viewMode === 'grid' ? 'jobs-layout-grid' : 'flex flex-col gap-1'}>
         <AnimatePresence mode="popLayout">
             {filteredCandidates.map((c, i) => (
               <motion.div 
@@ -155,33 +169,33 @@ const AdminResumeDatabase = ({ candidates, onOpenChat, onRefresh }) => {
                 style={{ 
                     flexDirection: viewMode === 'grid' ? 'column' : 'row',
                     alignItems: viewMode === 'grid' ? 'stretch' : 'center',
-                    padding: viewMode === 'grid' ? '2rem' : '1.25rem 2rem'
+                    padding: viewMode === 'grid' ? '2.5rem' : '1.25rem 2.5rem'
                 }}
               >
                 
-                <div className={`match-score-indicator ${viewMode === 'grid' ? 'absolute top-8 right-8' : ''}`}>
+                <div className={`match-score-indicator ${viewMode === 'grid' ? 'grid-position' : ''}`}>
                     <div className="match-val-pro">{c.match}%</div>
                     <div className="match-label-pro">FIT</div>
                 </div>
 
                 <div className="flex items-center gap-1 flex-1">
                     <div className="admin-avatar-box"><User size={24} color="white" /></div>
-                    <div className="min-w-0">
-                        <h4 className="card-title-white no-margin">{c.name}</h4>
-                        <div className="card-role-text">
+                    <div className="min-w-0" style={{ paddingRight: viewMode === 'grid' ? '4rem' : '0' }}>
+                        <h4 className="card-title-white no-margin truncate">{c.name}</h4>
+                        <div className="card-role-text truncate">
                             <ArrowUpRight size={14} color="var(--primary)" /> {c.role || "Knowledge Node"}
                         </div>
                     </div>
                 </div>
 
                 {viewMode === 'grid' && (
-                    <div className="flex-col gap-05 mt-4 p-4 rounded-xl bg-white-02 border border-white-05">
+                    <div className="flex-col gap-05 mt-6 p-5 rounded-2xl bg-white-02 border border-white-05">
                         <div className="pro-section-label"><Sparkles size={14} /> AI ANALYSIS</div>
-                        <p className="card-summary-clamped">{c.summary}</p>
+                        <p className="card-summary-clamped line-clamp-3">{c.summary}</p>
                     </div>
                 )}
 
-                <div className={`flex justify-between items-center ${viewMode === 'grid' ? 'mt-auto pt-4 border-t border-white-05' : 'min-w-[180px]'}`}>
+                <div className={`flex justify-between items-center ${viewMode === 'grid' ? 'mt-auto pt-5 border-t border-white-05' : 'min-w-[190px] ml-auto'}`}>
                     {viewMode === 'grid' && <div className="admin-desc-muted text-xs font-bold">{c.applied}</div>}
                     <div className="flex gap-05">
                         <button onClick={(e) => { e.stopPropagation(); setSelectedCandidateForNotes(c); }} className="card-icon-button relative w-9 h-9 flex items-center justify-center">
@@ -190,7 +204,7 @@ const AdminResumeDatabase = ({ candidates, onOpenChat, onRefresh }) => {
                         </button>
                         <button onClick={(e) => { e.stopPropagation(); onOpenChat(c); }} className="card-icon-button w-9 h-9 flex items-center justify-center"><Bot size={16} /></button>
                         <button onClick={(e) => handleDownload(e, c)} className="card-icon-button w-9 h-9 flex items-center justify-center"><Download size={16} /></button>
-                        <button onClick={(e) => { e.stopPropagation(); }} className="card-icon-button danger-ghost w-9 h-9 flex items-center justify-center"><Trash2 size={16} /></button>
+                        <button onClick={(e) => handleDelete(e, c.id)} className="card-icon-button danger-ghost w-9 h-9 flex items-center justify-center"><Trash2 size={16} /></button>
                     </div>
                 </div>
               </motion.div>
