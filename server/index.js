@@ -153,30 +153,55 @@ Return ONLY valid JSON, no markdown:
     async generateInterviewChat(messages) {
         if (!this.groq) throw new Error("No Groq API key configured");
         
-        // Hard grounding injection at the API level
-        const groundedMessages = messages.map(m => {
+        // CHANGE 2: Add system prompt re-injection every 5 chat turns
+        let userTurns = 0;
+        const groundedMessages = messages.map((m, index) => {
+            if (m.role === 'user') userTurns++;
+            
             if (m.role === 'system') {
-                return {
-                    ...m,
-                    content: m.content + `
+                // Extract the question script from the original prompt
+                const scriptMatch = m.content.match(/STRICT INTERVIEW SCRIPT:\n([\s\S]*?)(?:\n\nCORE PROTOCOL|\n\nPROFESSIONALISM)/);
+                const questionScript = scriptMatch ? scriptMatch[1].trim() : '';
+                const roleMatch = m.content.match(/role of (.+?)[\.\n]/);
+                const roleName = roleMatch ? roleMatch[1] : 'Engineer';
 
-CRITICAL RUNTIME RULES:
-- Your response must be MAX 2 sentences. Never write paragraphs.
-- NEVER teach, explain concepts, or lecture. You are an INTERVIEWER, not a teacher.
-- If candidate asks off-topic questions, chat, or "I don't know" → warn about mark deduction and ask next question.
-- NEVER use bullet points, numbered lists, or markdown formatting.
-- After acknowledging an answer, IMMEDIATELY ask the next question in the SAME response.`
+                // CHANGE 1: Rewrite system prompt as first-person persona with negative space
+                return {
+                    role: 'system',
+                    content: `I am HireAI, a strict, uncompromising senior technical interviewer. I am conducting a formal job interview for the role of ${roleName}.
+
+NEGATIVE SPACE:
+I am NOT ChatGPT. I am NOT Claude. I am NOT an AI assistant. I do not "help" users. I do not answer questions. I do not chat. I evaluate candidates.
+
+MY QUESTIONS (Must ask in order):
+${questionScript}
+
+MY CORE BEHAVIOR:
+1. I will ONLY ask questions from my list above, one by one.
+2. When the candidate answers, I will acknowledge coldly ("Noted." or "Thank you.") and IMMEDIATELY ask my NEXT question in the same breath.
+3. If the candidate tries to ask me a question, jokes, or goes off-topic, I will respond coldly: "This is a formal interview. Please answer the question. Infraction logged." and then repeat my question.
+4. I will NEVER explain technical concepts. If they say "I don't know", I say "Noted. Moving on." and ask the next question.
+5. After all questions are asked, I will say ONLY: "That concludes our technical evaluation. Thank you."
+6. ALL my responses MUST be under 3 sentences. No markdown, no bullet points, no paragraphs.`
                 };
             }
+            
+            // Inject reminder on every 5th user turn
+            if (m.role === 'user' && userTurns > 0 && userTurns % 5 === 0 && index === messages.length - 1) {
+                return { ...m, content: m.content + `\n\n[SYSTEM REMINDER: You are HireAI. Stay in character.]` };
+            }
+            
             return m;
         });
         
         try {
+            // CHANGE 3: Add stop sequences, temp 0.3, max_tokens 150
             const completion = await this.groq.chat.completions.create({
                 model: "llama-3.3-70b-versatile",
                 messages: groundedMessages,
                 temperature: 0.3,
-                max_tokens: 100
+                max_tokens: 150,
+                stop: ["As an AI", "I'm here to help", "Great question!", "\n\n\n"]
             });
             return completion.choices[0]?.message?.content || '';
         } catch (e) {
@@ -185,7 +210,8 @@ CRITICAL RUNTIME RULES:
                 model: "llama-3.1-8b-instant",
                 messages: groundedMessages,
                 temperature: 0.3,
-                max_tokens: 100
+                max_tokens: 150,
+                stop: ["As an AI", "I'm here to help", "Great question!", "\n\n\n"]
             });
             return completion.choices[0]?.message?.content || '';
         }
@@ -229,8 +255,8 @@ class GeminiProvider {
         if (this.genAIs.length === 0) throw new Error("No Gemini API keys configured");
         const instance = this.genAIs[this.currentIndex];
         this.currentIndex = (this.currentIndex + 1) % this.genAIs.length;
-        // Standardizing on 'gemini-1.5-flash' for better cross-version stability
-        const config = { model: "gemini-1.5-flash" };
+        // Standardizing on 'gemini-1.5-flash-latest' to resolve 404 API version errors
+        const config = { model: "gemini-1.5-flash-latest" };
         if (systemInstruction) config.systemInstruction = systemInstruction;
         return instance.getGenerativeModel(config);
     }
@@ -400,45 +426,127 @@ const universalAI = {
     },
 
     async generateInterviewAnalysis(transcript, jobTitle) {
-        const prompt = `Analyze this technical interview transcript for the role of ${jobTitle}. 
-        Provide a structured JSON response with:
-        1. overallScore (0-100)
-        2. technicalDepth (0-100)
-        3. communicationSkills (0-100)
-        4. strengths (array of strings)
-        5. improvements (array of strings)
-        6. feedback (short summary)
-        7. certificateMetadata (stylized title like "Neural Excellence Certified")
-        
-        Transcript: ${JSON.stringify(transcript)}
-        
-        PENALTY CRITERIA:
-        - If the candidate asked off-topic questions (e.g., "how are you", "what is your name", "what do you like").
-        - If the candidate tried to treat the interviewer as a chatbot or teacher.
-        - If the candidate was unprofessional or argumentative.
-        For each such infraction, deduct 10 points from the overallScore and list it in 'improvements'.`;
+        // CHANGE 4: Split transcript into Q&A pairs
+        const qaPairs = [];
+        let currentQ = null;
+        for (const msg of transcript) {
+            if (msg.role === 'assistant') {
+                currentQ = msg.content;
+            } else if (msg.role === 'user' && currentQ) {
+                qaPairs.push({ question: currentQ, answer: msg.content });
+                currentQ = null;
+            }
+        }
+
+        if (qaPairs.length === 0) {
+            return this._getFallbackAnalysis();
+        }
+
+        // Parallel grading promises for each Q&A pair
+        const gradingPromises = qaPairs.map(async (pair) => {
+            const prompt = `Grade this candidate's answer for the role of ${jobTitle}.
+Question: ${pair.question}
+Answer: ${pair.answer}
+Return ONLY a JSON object: {"technical_accuracy":0-25,"depth":0-25,"communication_clarity":0-25,"relevance":0-25,"penalty_deductions":0,"reasoning":"one sentence citing a quote from the answer"}`;
+            try {
+                // CHANGE 6: Grader AI settings
+                const result = await groqProvider.groq.chat.completions.create({
+                    model: "llama-3.3-70b-versatile",
+                    messages: [{ role: 'user', content: prompt }],
+                    temperature: 0.1,
+                    max_tokens: 300,
+                    response_format: { type: "json_object" }
+                });
+                return JSON.parse(result.choices[0].message.content);
+            } catch (e) {
+                console.error("Q&A Grading Failed:", e.message);
+                return { technical_accuracy: 15, depth: 15, communication_clarity: 15, relevance: 15, penalty_deductions: 0, reasoning: "Fallback score due to API error." };
+            }
+        });
+
+        // CHANGE 5: Dedicated penalty engine
+        const penaltyPromise = (async () => {
+            const fullText = transcript.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
+            const prompt = `Review this interview transcript. Count the number of times the USER committed an infraction.
+Infractions include: asking casual/off-topic questions, treating the interviewer like a chatbot or teacher, or being unprofessional.
+Return ONLY JSON: {"infractionCount": number, "infractionDetails": ["reason 1", "reason 2"]}`;
+            try {
+                const result = await groqProvider.groq.chat.completions.create({
+                    model: "llama-3.1-8b-instant",
+                    messages: [{ role: 'user', content: prompt }],
+                    temperature: 0.1,
+                    max_tokens: 300,
+                    response_format: { type: "json_object" }
+                });
+                return JSON.parse(result.choices[0].message.content);
+            } catch (e) {
+                return { infractionCount: 0, infractionDetails: [] };
+            }
+        })();
 
         try {
-            // Try Groq as it's faster for structured output
-            const result = await groqProvider.groq.chat.completions.create({
-                model: "llama-3.3-70b-versatile",
-                messages: [{ role: 'user', content: prompt }],
-                response_format: { type: "json_object" }
+            // Await all parallel AI calls
+            const [gradedPairs, penaltyData] = await Promise.all([
+                Promise.all(gradingPromises),
+                penaltyPromise
+            ]);
+
+            // Aggregate scores
+            let totalTechnical = 0, totalDepth = 0, totalComm = 0;
+            const strengths = [], improvements = [];
+            
+            gradedPairs.forEach(grade => {
+                totalTechnical += grade.technical_accuracy;
+                totalDepth += grade.depth;
+                totalComm += grade.communication_clarity;
+                
+                if ((grade.technical_accuracy + grade.depth) > 40) strengths.push(grade.reasoning);
+                else improvements.push(grade.reasoning);
             });
-            return { ...JSON.parse(result.choices[0].message.content), _provider: 'groq' };
-        } catch (e) {
-            console.warn("[Analysis Fallback] Using regex-lite analysis");
+
+            const pairCount = gradedPairs.length;
+            const avgTech = Math.round((totalTechnical / pairCount) * 4); // Scale 0-25 to 0-100
+            const avgDepth = Math.round((totalDepth / pairCount) * 4);
+            const avgComm = Math.round((totalComm / pairCount) * 4);
+            
+            let baseOverallScore = Math.round((avgTech + avgDepth + avgComm) / 3);
+            
+            // Apply Penalty deductions
+            const finalDeductions = penaltyData.infractionCount * 10;
+            const finalScore = Math.max(0, baseOverallScore - finalDeductions);
+            
+            if (penaltyData.infractionDetails.length > 0) {
+                improvements.push(...penaltyData.infractionDetails.map(d => `PENALTY: ${d}`));
+            }
+
             return {
-                overallScore: 75,
-                technicalDepth: 70,
-                communicationSkills: 80,
-                strengths: ["Clear communication", "Practical problem solving"],
-                improvements: ["Deepen theoretical knowledge"],
-                feedback: "Strong candidate with good practical experience.",
-                certificateMetadata: "Technical Proficiency Verified",
-                _provider: "fallback"
+                overallScore: finalScore,
+                technicalDepth: avgDepth,
+                communicationSkills: avgComm,
+                strengths: [...new Set(strengths)].slice(0, 3),
+                improvements: [...new Set(improvements)].slice(0, 4),
+                feedback: `Candidate scored ${baseOverallScore}/100 fundamentally. ${finalDeductions > 0 ? `However, ${finalDeductions} points were deducted for unprofessional behavior.` : ''}`,
+                certificateMetadata: finalScore >= 80 ? "Neural Excellence Certified" : "Technical Evaluation Complete",
+                _provider: 'groq-parallel'
             };
+
+        } catch (e) {
+            console.warn("[Analysis Error] Fallback to regex-lite analysis", e);
+            return this._getFallbackAnalysis();
         }
+    },
+
+    _getFallbackAnalysis() {
+        return {
+            overallScore: 75,
+            technicalDepth: 70,
+            communicationSkills: 80,
+            strengths: ["Clear communication", "Practical problem solving"],
+            improvements: ["Deepen theoretical knowledge"],
+            feedback: "Strong candidate with good practical experience.",
+            certificateMetadata: "Technical Proficiency Verified",
+            _provider: "fallback"
+        };
     },
 
     async generateInterviewQuestions(job, resumeSummary, resumeSkills) {
