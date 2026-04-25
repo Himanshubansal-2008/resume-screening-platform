@@ -5,7 +5,7 @@ import {
   ShieldCheck, HelpCircle, Cpu, ChevronRight, ClipboardList, Bot, ArrowRight, User, Sun, Moon, History
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from '@clerk/clerk-react';
+import { SignedIn, SignedOut, SignInButton, UserButton, useUser, useClerk } from '@clerk/clerk-react';
 
 import AdminDashboard from './components/admin/AdminDashboard';
 import AdminResumeDatabase from './components/admin/AdminResumeDatabase';
@@ -87,9 +87,6 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
               >
                 <Bot size={18} /> <span>Ask HireAI Bot</span>
               </button>
-
-              <div className="sidebar-separator"></div>
-
               <div className="sidebar-separator"></div>
             </>
           ) : (
@@ -112,7 +109,6 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
               <button className={`nav-item-pro ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>
                 <User size={18} /> <span>My Profile</span>
               </button>
-
               <div className="sidebar-separator"></div>
             </>
           )}
@@ -169,6 +165,7 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
 
 
 const App = () => {
+  const { openSignIn } = useClerk();
   const [activeTab, setActiveTab] = useState(
     () => sessionStorage.getItem('activeTab') || 'dashboard'
   );
@@ -185,6 +182,10 @@ const App = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeChatCandidate, setActiveChatCandidate] = useState(null);
   const [activeInterviewApp, setActiveInterviewApp] = useState(null);
+  
+  const [isInitializing, setIsInitializing] = useState(false);
+  const [initStage, setInitStage] = useState('');
+
   const { user } = useUser();
   const isAdmin = useMemo(() => ADMIN_EMAILS.includes(user?.primaryEmailAddress?.emailAddress), [user]);
 
@@ -231,42 +232,112 @@ const App = () => {
     }
   };
 
+  const handleInitialize = () => {
+    setIsInitializing(true);
+    setInitStage('Neural Link Established');
+    
+    setTimeout(() => setInitStage('Decrypting Credentials...'), 800);
+    setTimeout(() => setInitStage('Accessing Secure Core...'), 1600);
+    
+    setTimeout(() => {
+      openSignIn({ mode: 'modal' });
+      setIsInitializing(false);
+    }, 2400);
+  };
+
   return (
     <>
       <SignedOut>
         <div className="login-bg">
+          {/* Cinematic Background Elements */}
+          <div className="login-visuals">
+            <div className="orb orb-1"></div>
+            <div className="orb orb-2"></div>
+            <div className="orb orb-3"></div>
+            <div className="data-stream"></div>
+          </div>
+
           <motion.div 
-            initial={{ opacity: 0, y: 30 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            initial={{ opacity: 0, scale: 0.95, y: 30 }} 
+            animate={{ opacity: 1, scale: 1, y: 0 }} 
+            transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
             className="login-card"
           >
-            <div className="login-logo-wrapper">
-               <Cpu size={42} color="white" />
-            </div>
+            <div className="scanning-line"></div>
             
-            <h1 className="login-title brand-font">
-              HireAI <span style={{ color: 'var(--primary)' }}>Portal</span>
-            </h1>
-            
-            <p className="login-subtitle">
-              The world's most advanced AI-driven candidate screening and interview readiness platform.
-            </p>
+            <AnimatePresence>
+              {isInitializing && (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="init-overlay"
+                >
+                  <div className="init-text">{initStage}</div>
+                  <div className="init-loader">
+                    <div className="init-loader-fill"></div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            <SignInButton mode="modal">
-              <button className="login-btn">
-                Initialize Secure Session <ChevronRight size={20} />
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.8 }}
+              className="login-logo-wrapper"
+            >
+               <Cpu size={42} color="white" style={{ position: 'relative', zIndex: 2 }} />
+            </motion.div>
+            
+            <motion.h1 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.8 }}
+              className="login-title"
+            >
+              <span>HireAI</span>
+            </motion.h1>
+            
+            <motion.p 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.7, duration: 1 }}
+              className="login-subtitle"
+            >
+              Experience the next generation of AI-driven talent orchestration and automated screening.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.9, duration: 0.6 }}
+            >
+              <button 
+                className={`login-btn ${isInitializing ? 'initializing' : ''}`}
+                onClick={handleInitialize}
+                disabled={isInitializing}
+              >
+                {isInitializing ? 'Connecting...' : 'Initialize Secure Session'}
+                <ChevronRight size={20} />
               </button>
-            </SignInButton>
+            </motion.div>
 
-            <div className="login-footer">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.2, duration: 1 }}
+              className="login-footer"
+            >
                <div className="login-footer-item">
-                 <CheckCircle size={14} color="var(--success)" /> Neural Extraction
+                 <div className="pulse-dot-premium"></div>
+                 <span>Neural Analysis</span>
                </div>
                <div className="login-footer-item">
-                 <CheckCircle size={14} color="var(--success)" /> 0ms Latency
+                 <div className="pulse-dot-premium"></div>
+                 <span>Zero Latency</span>
                </div>
-            </div>
+            </motion.div>
           </motion.div>
         </div>
       </SignedOut>

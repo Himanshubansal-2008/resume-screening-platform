@@ -112,19 +112,24 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
 
   return (
     <div className="fadeIn admin-page-container">
-      <div className="admin-upload-container">
-        <div className="flex-col gap-1">
-          <div className="flex-col gap-05">
-            <div className="pill-badge-primary self-start"><Sparkles size={14} /> AI EXTRACTION ENGINE v4.0</div>
-            <p className="admin-desc-muted mt-2">Index your hiring strategy with multi-dimensional neural extraction.</p>
+      <div className="admin-header-layout">
+        <div className="admin-header-info">
+          <div className="pill-badge-primary self-start mb-4">
+            <Sparkles size={14} /> AI EXTRACTION ENGINE v4.0
           </div>
-          <div className="flex gap-1 items-center mt-6">
-             <button onClick={() => setShowCreateForm(true)} className="btn-action-pro btn-primary h-12 px-8 rounded-xl">
+          <h2 className="text-white text-3xl font-black mb-4">Hiring Index</h2>
+          <p className="admin-desc-muted max-w-md">
+            Index your hiring strategy with multi-dimensional neural extraction. 
+            Upload job descriptions to auto-generate requirements and skills.
+          </p>
+          
+          <div className="admin-header-actions mt-8">
+             <button onClick={() => setShowCreateForm(true)} className="btn-action-pro btn-primary">
                 <Plus size={18} /> New Manual Posting
              </button>
-             <div className="flex items-center gap-2 text-muted-700 font-bold text-sm">
-                <div className="w-2 h-2 rounded-full bg-success shadow-glow-success"></div>
-                Cloud Sync Active
+             <div className="sync-status-pill">
+                <div className="pulse-dot"></div>
+                <span>Cloud Sync Active</span>
              </div>
           </div>
         </div>
@@ -138,31 +143,34 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
           <input type="file" ref={fileInputRef} onChange={(e) => handlePdfUpload(e.target.files[0])} className="hidden" accept="application/pdf" />
           <AnimatePresence mode="wait">
             {isAnalyzing ? (
-              <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-col items-center gap-1">
+              <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="upload-state-container">
                 <div className="loader-ring"></div>
-                <div className="text-center mt-4">
-                    <p className="font-black text-white tracking-widest uppercase">Neural Scan In Progress</p>
-                    <p className="admin-desc-muted text-xs mt-1">Gemini 1.5 mapping knowledge nodes.</p>
+                <div className="text-center mt-6">
+                    <p className="neural-scan-text">Neural Scan In Progress</p>
+                    <p className="admin-desc-muted text-xs">Gemini 1.5 mapping knowledge nodes...</p>
                 </div>
                 <LiveKeywordStream isAnalyzing={true} customKeywords={keywords} />
               </motion.div>
             ) : showSuccessPulse ? (
-              <motion.div key="success" initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="text-center">
-                 <div className="w-16 h-16 bg-success-dim rounded-full flex items-center justify-center mx-auto mb-4 border border-success-20">
+              <motion.div key="success" initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="upload-state-container">
+                 <div className="success-icon-box">
                     <CheckCircle size={32} color="var(--success)" />
                  </div>
                  <h4 className="text-success font-black text-lg">STRUCTURE EXTRACTED</h4>
               </motion.div>
             ) : (
-              <motion.div key="idle" className="text-center">
-                <div className="upload-icon-circle"><UploadCloud size={40} /></div>
-                <h4 className="text-white text-xl font-extrabold mb-2">{isDragActive ? "Inhale Strategy" : "Neural Extractions"}</h4>
-                <p className="admin-desc-muted text-sm max-w-[240px]">Inhale strategy from any PDF to auto-fill details.</p>
+              <motion.div key="idle" className="upload-state-container">
+                <div className="upload-icon-circle">
+                  <UploadCloud size={40} />
+                </div>
+                <h4 className="upload-title">{isDragActive ? "Inhale Strategy" : "Neural Extraction"}</h4>
+                <p className="upload-subtitle">Drop PDF to auto-fill job details</p>
               </motion.div>
             )}
           </AnimatePresence>
         </motion.div>
       </div>
+
 
       <div className="flex justify-between items-center bg-white-02 p-4 rounded-2xl border border-white-05">
          <div className="admin-search-wrapper max-w-md">
