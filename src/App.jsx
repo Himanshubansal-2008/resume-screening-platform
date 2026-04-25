@@ -90,16 +90,6 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
 
               <div className="sidebar-separator"></div>
 
-              <button
-                onClick={onToggleTheme}
-                className="theme-toggle-btn"
-              >
-                <div className={`theme-toggle-track ${theme === 'dark' ? 'dark' : ''}`}>
-                  <div className="theme-toggle-thumb" />
-                </div>
-                {theme === 'dark' ? <Moon size={15} /> : <Sun size={15} color="var(--warning)" />}
-                <span>{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
-              </button>
             </>
           ) : (
             <>
@@ -122,16 +112,6 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
                 <User size={18} /> <span>My Profile</span>
               </button>
 
-              <button
-                onClick={onToggleTheme}
-                className="theme-toggle-btn"
-              >
-                <div className={`theme-toggle-track ${theme === 'dark' ? 'dark' : ''}`}>
-                  <div className="theme-toggle-thumb" />
-                </div>
-                {theme === 'dark' ? <Moon size={15} /> : <Sun size={15} color="var(--warning)" />}
-                <span>{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
-              </button>
             </>
           )}
         </nav>
@@ -149,6 +129,18 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
               <p className="header-subtitle">{headerContent.subtitle}</p>
             </div>
             <div className="header-right">
+              {activeTab === 'dashboard' && (
+                <button
+                  onClick={onToggleTheme}
+                  className="theme-toggle-header"
+                  title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                >
+                  <div className={`theme-toggle-track ${theme === 'dark' ? 'dark' : ''}`}>
+                    <div className="theme-toggle-thumb" />
+                  </div>
+                  {theme === 'dark' ? <Moon size={14} color="white" /> : <Sun size={14} color="var(--warning)" />}
+                </button>
+              )}
               <div className="status-item">
                  <ShieldCheck size={16} color="var(--primary)" /> SECURE SESSION
               </div>

@@ -14,10 +14,11 @@ const upload = multer();
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// <<<<<<< HEAD
 // Allow both development and production origins
 const allowedOrigins = [
+  'http://localhost:5173',
   'http://localhost:5174',
+  'http://localhost:5175',
   'http://localhost:3000',
   'https://resume-screening-platform.vercel.app'
 ];
@@ -34,15 +35,13 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-// =======
-// // Ensure uploads directory exists
-// const uploadsDir = path.join(__dirname, 'uploads');
-// if (!fs.existsSync(uploadsDir)){
-//     fs.mkdirSync(uploadsDir, { recursive: true });
-// }
 
-// app.use(cors());
-// >>>>>>> vivek
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)){
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -57,7 +56,7 @@ function cleanJsonResponse(text) {
         // Try to find any JSON object in the text
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-            try { return JSON.parse(jsonMatch[0]); } catch {}
+            try { return JSON.parse(jsonMatch[0]); } catch { }
         }
         throw new Error("Neural output was malformed. Please try again.");
     }
@@ -66,7 +65,7 @@ function cleanJsonResponse(text) {
 // --- REGEX FALLBACK EXTRACTOR (no API needed) ---
 function regexExtractJD(text) {
     const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-    
+
     const getSection = (heading) => {
         const idx = lines.findIndex(l => l.toLowerCase().includes(heading.toLowerCase()));
         if (idx === -1) return '';
@@ -190,7 +189,7 @@ class GeminiProvider {
         const instance = this.genAIs[this.currentIndex];
         this.currentIndex = (this.currentIndex + 1) % this.genAIs.length;
         // Standardizing on 'gemini-1.5-flash' for better cross-version stability
-        const config = { model: "gemini-1.5-flash" }; 
+        const config = { model: "gemini-1.5-flash" };
         if (systemInstruction) config.systemInstruction = systemInstruction;
         return instance.getGenerativeModel(config);
     }
@@ -218,7 +217,7 @@ Return valid JSON with NO MARKDOWN BLOCKS:
     async generateInterviewChat(messages) {
         const systemPrompt = messages.find(m => m.role === 'system')?.content || "";
         const model = this.getModel(systemPrompt);
-        
+
         const chatMessages = messages.filter(m => m.role !== 'system');
         if (chatMessages.length === 0) {
             const result = await model.generateContent("Start the interview.");
@@ -228,13 +227,13 @@ Return valid JSON with NO MARKDOWN BLOCKS:
         // Gemini history MUST alternate user/model and START with user.
         let history = [];
         const historyData = chatMessages.slice(0, -1);
-        
+
         if (historyData.length > 0) {
             // Ensure first message is user
             if (historyData[0].role === 'assistant') {
                 history.push({ role: 'user', parts: [{ text: "Understood. Please continue." }] });
             }
-            
+
             for (const m of historyData) {
                 const role = m.role === 'assistant' ? 'model' : 'user';
                 // Only push if it alternates
@@ -245,14 +244,14 @@ Return valid JSON with NO MARKDOWN BLOCKS:
                     history[history.length - 1].parts[0].text += "\n" + m.content;
                 }
             }
-            
+
             // If the last history message is 'model' and the next message to send (lastMessage) is also 'model' (unlikely in this flow),
             // we'd need to fix it, but usually the last in chatMessages is from User.
         }
 
         const chat = model.startChat({ history });
         const lastMessage = chatMessages[chatMessages.length - 1].content;
-        
+
         try {
             const result = await chat.sendMessage(lastMessage);
             return result.response.text();
@@ -324,7 +323,7 @@ const universalAI = {
 
     async generateInterviewChat(messages) {
         let lastError = "No providers attempted";
-        
+
         // CRITICAL: Sanitize messages for API compatibility (strip 'provider', 'hidden', etc.)
         const sanitizedMessages = messages.map(m => ({
             role: m.role === 'model' ? 'assistant' : m.role, // Standardize model role
@@ -353,9 +352,9 @@ const universalAI = {
             console.error('[CRITICAL] Gemini Interview failed:', e.message);
         }
 
-        return { 
-            text: `I am experiencing high neural load. (Detailed Diagnostic: ${lastError})`, 
-            _provider: 'fallback' 
+        return {
+            text: `I am experiencing high neural load. (Detailed Diagnostic: ${lastError})`,
+            _provider: 'fallback'
         };
     },
 
@@ -404,7 +403,7 @@ app.get('/', (req, res) => {
 // 1. Candidate List
 app.get('/api/candidates', async (req, res) => {
     try {
-        const candidates = await prisma.candidate.findMany({ 
+        const candidates = await prisma.candidate.findMany({
             orderBy: { match: 'desc' },
             include: { applications: { include: { job: true } } }
         });
@@ -428,7 +427,7 @@ app.post('/api/interview/chat', async (req, res) => {
 // 2. Active Jobs List
 app.get('/api/jobs', async (req, res) => {
     try {
-        const jobs = await prisma.job.findMany({ 
+        const jobs = await prisma.job.findMany({
             orderBy: { createdAt: 'desc' },
             include: { applications: { include: { candidate: true } } }
         });
@@ -444,7 +443,7 @@ app.patch('/api/candidates/:id', async (req, res) => {
         const { notes, status } = req.body;
         const candidate = await prisma.candidate.update({
             where: { id: parseInt(req.params.id) },
-            data: { 
+            data: {
                 ...(notes !== undefined && { notes }),
                 ...(status !== undefined && { status })
             }
@@ -465,7 +464,7 @@ app.delete('/api/candidates/:id', async (req, res) => {
         await prisma.application.deleteMany({ where: { candidateId: id } });
         // Delete related interviews
         await prisma.interview.deleteMany({ where: { candidateId: id } });
-        
+
         await prisma.candidate.delete({ where: { id } });
         res.json({ message: "Candidate purged from neural record" });
     } catch (error) {
@@ -528,7 +527,7 @@ app.post('/api/candidates', upload.single('resumePdf'), async (req, res) => {
             const pdfData = await pdf(req.file.buffer);
             extractedText = pdfData.text;
             fileName = req.file.originalname || "Resume.pdf";
-            
+
             const safeName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
             const uniqueFilename = `${Date.now()}-${safeName}`;
             const filePath = path.join(__dirname, 'uploads', uniqueFilename);
@@ -612,7 +611,7 @@ app.put('/api/resumes/:id/active', async (req, res) => {
         const resumeId = parseInt(req.params.id);
         const resume = await prisma.resume.findUnique({ where: { id: resumeId } });
         if (!resume) return res.status(404).json({ error: "Not found" });
-        
+
         await prisma.$transaction([
             prisma.resume.updateMany({
                 where: { candidateId: resume.candidateId },
@@ -638,7 +637,7 @@ app.post('/api/jobs/upload', upload.single('jdPdf'), async (req, res) => {
         const pdfData = await pdf(req.file.buffer);
         const data = await universalAI.extractJD(pdfData.text);
         console.log(`[Neural Engine] JD extraction complete via ${data._provider}`);
-        
+
         res.json(data);
     } catch (err) {
         console.error("[Hardening] Extraction failure:", err);
@@ -724,7 +723,7 @@ app.post('/api/interviews', async (req, res) => {
         const { email, jobId, transcript } = req.body;
         const candidate = await prisma.candidate.findUnique({ where: { email } });
         const job = await prisma.job.findUnique({ where: { id: parseInt(jobId) } });
-        
+
         if (!candidate || !job) return res.status(404).json({ error: "Context missing" });
 
         console.log(`[Neural Engine] Generating Deep Analysis for ${email}...`);
@@ -749,17 +748,6 @@ app.post('/api/interviews', async (req, res) => {
     }
 });
 
-// <<<<<<< HEAD
-// if (process.env.NODE_ENV !== 'test') {
-//     app.listen(PORT, '0.0.0.0', () => {
-//         console.log(`Backend running with Neural Gemini Engine at http://0.0.0.0:${PORT}`);
-//         console.log(`[Config] Groq Key: ${process.env.GROQ_API_KEY ? 'LOADED' : 'MISSING'}`);
-//         console.log(`[Config] Gemini Keys: ${process.env.GEMINI_API_KEYS ? 'LOADED' : 'MISSING'}`);
-//     });
-// }
-
-// module.exports = app;
-// =======
 app.patch('/api/interviews/:id/feedback', async (req, res) => {
     try {
         const { rating, comment } = req.body;
@@ -785,4 +773,4 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`[Config] Groq Key: ${process.env.GROQ_API_KEY ? 'LOADED (' + process.env.GROQ_API_KEY.slice(0, 8) + '...)' : 'MISSING'}`);
     console.log(`[Config] Gemini Keys: ${process.env.GEMINI_API_KEYS ? 'LOADED' : 'MISSING'}`);
 });
-// >>>>>>> vivek
+
