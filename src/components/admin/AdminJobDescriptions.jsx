@@ -21,12 +21,16 @@ import {
   ChevronUp,
   Search,
   Filter,
-  ArrowRight
+  ArrowRight,
+  Target,
+  ShieldCheck,
+  TrendingUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import LiveKeywordStream from '../shared/LiveKeywordStream';
 import TalentProfileModal from '../shared/TalentProfileModal';
 import { API_BASE_URL } from '../../apiConfig';
+import JobProfileModal from '../shared/JobProfileModal';
 import './Admin.css';
 
 const formatTimeAgo = (dateString) => {
@@ -49,7 +53,7 @@ const formatTimeAgo = (dateString) => {
 
 const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
   const [jobs, setJobs] = useState(initialJobs);
-  const [expandedId, setExpandedId] = useState(null);
+  const [selectedJobForModal, setSelectedJobForModal] = useState(null);
   const [selectedCandidateForProfile, setSelectedCandidateForProfile] = useState(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
@@ -175,12 +179,14 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
       <div className="jobs-layout-grid">
         {filteredJobs.length > 0 ? filteredJobs.map(job => (
           <motion.div
-            key={job.id} layout className="glass-card" onClick={() => setExpandedId(expandedId === job.id ? null : job.id)}
+            key={job.id} layout className="glass-card" onClick={() => setSelectedJobForModal(job)}
             style={{ 
-                border: expandedId === job.id ? '1px solid var(--primary-glow)' : '1px solid var(--card-border)', 
-                background: expandedId === job.id ? 'hsla(217, 91%, 60%, 0.03)' : 'hsla(0,0%,100%,0.01)',
-                padding: '2.5rem'
+                border: '1px solid var(--card-border)', 
+                background: 'hsla(0,0%,100%,0.01)',
+                padding: '2.5rem',
+                cursor: 'pointer'
             }}
+            whileHover={{ borderColor: 'var(--primary-glow)', backgroundColor: 'hsla(217, 91%, 60%, 0.03)' }}
           >
             <div className="flex justify-between items-start mb-6">
                 <div className="flex gap-1">
@@ -202,67 +208,14 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
                 <span className="text-muted-700 text-xs font-bold ml-auto self-center">{formatTimeAgo(job.createdAt)}</span>
             </div>
 
-            <p className={`card-summary-clamped text-base leading-relaxed mb-6 ${expandedId === job.id ? 'line-clamp-none' : ''}`}>{job.description}</p>
+            <p className={`card-summary-clamped text-base leading-relaxed mb-6`}>{job.description}</p>
 
             <div className="flex justify-between items-center pt-5 border-t border-white-05">
                 <div className="flex items-center gap-2 text-white font-extrabold text-sm"><Users size={14} className="text-primary" /> {job.applications?.length || 0} Pipelines</div>
-                <div className="text-primary font-black text-sm flex items-center gap-1 uppercase tracking-wider">{expandedId === job.id ? 'Collapse' : 'Inspect Details'} {expandedId === job.id ? <ChevronUp size={16}/> : <ArrowRight size={16} />}</div>
+                <div onClick={(e) => { e.stopPropagation(); setSelectedJobForModal(job); }} className="text-primary font-black text-sm flex items-center gap-1 uppercase tracking-wider cursor-pointer hover:text-primary-glow transition-colors">
+                    Inspect Details <ArrowRight size={16} />
+                </div>
             </div>
-
-            <AnimatePresence>
-                {expandedId === job.id && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="overflow-hidden mt-8">
-                        <div className="job-details-grid">
-                            <div className="bg-white-02 p-5 rounded-2xl border border-white-05">
-                                <div className="pro-section-label">REQUISITE STACK</div>
-                                <div className="flex flex-wrap gap-1.5">{job.skills?.map(s => <span key={s} className="pill-primary-xs">{s}</span>)}</div>
-                            </div>
-                            <div className="bg-white-02 p-5 rounded-2xl border border-white-05">
-                                <div className="pro-section-label text-success">OFFERING PERKS</div>
-                                <p className="text-dim-600 text-sm leading-relaxed">{job.benefits || 'Standard reward structure.'}</p>
-                            </div>
-                            {/* Active Applicants Panel */}
-                            {job.applications && job.applications.length > 0 && (
-                                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.75rem', borderRadius: '22px', border: '1px dashed var(--card-border)' }}>
-                                    <div style={{ color: '#fff', fontWeight: '900', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <Users size={16} color="var(--primary)" /> Active Applicants
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                        {job.applications.map(app => (
-                                            <div key={app.id} 
-                                                 onClick={(e) => { 
-                                                    e.stopPropagation(); 
-                                                    setSelectedCandidateForProfile({
-                                                        ...app.candidate,
-                                                        match: app.resumeScore || app.candidate?.match,
-                                                        summary: app.resumeSummary || app.candidate?.summary,
-                                                        skills: app.resumeSkills?.length > 0 ? app.resumeSkills : app.candidate?.skills,
-                                                        appliedResumeTitle: app.resumeName || null
-                                                    }); 
-                                                 }}
-                                                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-primary)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--card-border)', cursor: 'pointer', transition: 'all 0.2s' }}
-                                                 className="candidate-row-hover"
-                                            >
-                                                <div>
-                                                    <span style={{ color: 'white', fontWeight: '700', fontSize: '0.95rem' }}>{app.candidate?.name}</span>
-                                                    {app.resumeName && <span style={{ marginLeft: '8px', padding: '2px 6px', background: 'hsla(217, 91%, 60%, 0.1)', color: 'var(--primary)', fontSize: '0.65rem', borderRadius: '6px', fontWeight: '800' }}>{app.resumeName}</span>}
-                                                    <div style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>{app.candidate?.email}</div>
-                                                </div>
-                                                <div style={{ textAlign: 'right' }}>
-                                                    <span style={{ background: (app.resumeScore || app.candidate?.match) > 80 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.05)', color: (app.resumeScore || app.candidate?.match) > 80 ? '#10b981' : 'var(--text-dim)', padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '800' }}>
-                                                        {app.resumeScore || app.candidate?.match}% Match
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
           </motion.div>
         )) : (
             <div className="infra-msg-shell w-full" style={{ gridColumn: '1 / -1' }}>
@@ -303,6 +256,12 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
           </div>
         )}
       </AnimatePresence>
+      <JobProfileModal 
+        isOpen={!!selectedJobForModal} 
+        onClose={() => setSelectedJobForModal(null)} 
+        job={selectedJobForModal} 
+        onSelectCandidate={setSelectedCandidateForProfile} 
+      />
       <TalentProfileModal isOpen={!!selectedCandidateForProfile} onClose={() => setSelectedCandidateForProfile(null)} candidate={selectedCandidateForProfile} />
     </div>
   );

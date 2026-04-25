@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Video, VideoOff, Phone, Activity, Bot } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, Phone, Activity, Bot, Sparkles, CheckCircle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import './candidate.css';
 import { API_BASE_URL } from '../../apiConfig';
@@ -15,6 +15,30 @@ const CandidateSimulation = ({ myProfile, activeInterviewApp, setActiveTab }) =>
   const [transcript, setTranscript] = useState("");
   const [techQuestionCount, setTechQuestionCount] = useState(0);
   const [silenceStrikes, setSilenceStrikes] = useState(0);
+  const [interviewQuestions, setInterviewQuestions] = useState([]);
+  const [questionsLoading, setQuestionsLoading] = useState(true);
+  const interviewQuestionsRef = useRef([]);
+
+  useEffect(() => {
+    if (activeInterviewApp?.id) {
+      setQuestionsLoading(true);
+      fetch(`${API_BASE_URL}/api/applications/${activeInterviewApp.id}/questions`)
+        .then(res => res.json())
+        .then(data => {
+          const qs = data.questions || [];
+          setInterviewQuestions(qs);
+          interviewQuestionsRef.current = qs;
+        })
+        .finally(() => setQuestionsLoading(false));
+    }
+  }, [activeInterviewApp?.id]);
+
+  // Feedback State
+  const [lastInterviewId, setLastInterviewId] = useState(null);
+  const [rating, setRating] = useState(0);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
   const videoRef = useRef(null);
   const silenceTimeoutRef = useRef(null);
@@ -222,31 +246,44 @@ const playAudio = (text) => {
 
 
 const joinCall = () => {
-  setCallState('active'); callStateRef.current = 'active';
+  setCallState('active'); 
+  callStateRef.current = 'active';
+  
   const job = activeInterviewApp?.job;
-  const systemPrompt = `You are a Senior Technical Interviewer conduct a live technical screening for the role of ${job?.title || 'Engineer'}. 
-Role Context: ${job?.description || 'Focus on core engineering principles.'}
-Candidate: ${myProfile?.name || 'Applicant'}
+  const questions = interviewQuestionsRef.current;
+  
+  // Format the script for the AI
+  const questionScript = questions.length > 0 
+    ? questions.map((q, i) => `${i + 1}. ${q.question}`).join('\n')
+    : "1. Tell me about your background.\n2. Explain your technical expertise.\n3. How do you handle complex engineering challenges?\n4. What is your preferred tech stack and why?";
 
-Your Goal: Evaluate technical depth. 
-1. The interview has ALREADY started with the intro. Now, ask EXACTLY 4 highly specific technical questions one by one.
-2. ALL QUESTIONS MUST be directly derived from the Role Context and Job Requirement provided above.
-3. After the 4th technical question and candidate response, you MUST say "Thank you, that concludes our technical evaluation. I will now process your results." and stop.
-4. DO NOT be generic. Avoid standard behavioral questions.
-5. Dive deep into specific technologies mentioned in the Job description.
-6. Keep responses strictly under 2 sentences for rapid voice interaction.
-7. If the candidate deviates, asks about unrelated differences, or brings up topics not directly tied to the role, politely steer them back: "Let's focus on the technical aspects relevant to the position."
-8. Never engage in casual chat, jokes, or off‑topic discussion.`;
+  const systemPrompt = `You are a Senior Technical Interviewer conducting a live technical screening for the role of ${job?.title || 'Engineer'}. 
+
+STRICT INTERVIEW SCRIPT:
+${questionScript}
+
+CORE PROTOCOL:
+1. You must ask the questions EXACTLY as written in the script above, one by one.
+2. The interview starts NOW. Ask the FIRST question from the script immediately after greeting.
+3. Once the candidate answers a question, briefly acknowledge and IMMEDIATELY ask the NEXT question in the script.
+4. After the FINAL question and candidate response, you MUST say "Thank you, that concludes our technical evaluation. I will now process your results." and stop.
+
+PROFESSIONALISM & PENALTIES:
+- You are in a formal interview. NEVER engage in casual chat, jokes, or off-topic discussion.
+- If the candidate asks "How are you?", "What is your name?", or any unrelated question, respond with: "I am here to conduct your technical interview. Please focus on the questions. Deducting marks for unprofessional behavior." then repeat/ask the current question.
+- Do not teach or explain concepts. You are evaluating, not mentoring.
+- Keep all responses (acknowledgment + next question) under 2 sentences.`;
 
   const initialHistory = [
     { role: 'system', content: systemPrompt },
-    { role: 'assistant', content: "Hello! To get started, please tell me a bit about yourself and your background." }
+    { role: 'assistant', content: `Hello ${myProfile?.name || 'Applicant'}! I am HireAI, your technical interviewer today. Let's begin. ${questions.length > 0 ? questions[0].question : "To get started, please tell me a bit about your background."}` }
   ];
 
   setMessages(initialHistory);
-  playAudio("Hello! To get started, please tell me a bit about yourself and your background.");
-  setTechQuestionCount(0); // Start the counter
+  playAudio(`Hello ${myProfile?.name || 'Applicant'}! I am HireAI, your technical interviewer today. Let's begin. ${questions.length > 0 ? questions[0].question : "To get started, please tell me a bit about your background."}`);
+  setTechQuestionCount(0);
 };
+;
 
 const endCall = async () => {
   window.speechSynthesis.cancel();
@@ -265,9 +302,28 @@ const endCall = async () => {
         transcript: messages
       })
     });
+    const data = await res.json();
+    if (data.id) setLastInterviewId(data.id);
     console.log("[Simulation] Interview saved to history");
   } catch (err) {
     console.error("[Simulation] Failed to save interview:", err);
+  }
+};
+
+const submitFeedback = async () => {
+  if (!lastInterviewId) return;
+  setIsSubmittingFeedback(true);
+  try {
+    const res = await fetch(`http://localhost:5001/api/interviews/${lastInterviewId}/feedback`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rating, comment: feedbackText })
+    });
+    if (res.ok) setFeedbackSubmitted(true);
+  } catch (err) {
+    console.error("Failed to submit feedback:", err);
+  } finally {
+    setIsSubmittingFeedback(false);
   }
 };
 
@@ -291,7 +347,21 @@ if (callState === 'lobby') {
         <div className="cs-sim-lobby-icon-box"><Bot size={44} color="#3b82f6" /></div>
         <h2 className="cs-sim-lobby-title">{activeInterviewApp?.job?.title} Interview</h2>
         <p className="cs-sim-lobby-text">Your camera and microphone will be used for this live AI evaluation. Ensure a quiet environment.</p>
-        <button onClick={joinCall} className="btn-action-pro btn-primary cs-sim-btn-start">Start Interview</button>
+        
+        {questionsLoading ? (
+          <div className="flex items-center gap-3 text-primary font-bold animate-pulse">
+            <Loader2 className="animate-spin" size={20} />
+            <span>Preparing Interview Questions...</span>
+          </div>
+        ) : (
+          <button 
+            onClick={joinCall} 
+            className="btn-action-pro btn-primary cs-sim-btn-start"
+            disabled={questionsLoading}
+          >
+            Start Interview
+          </button>
+        )}
       </div>
     </div>
   );
@@ -303,7 +373,56 @@ if (callState === 'ended') {
       <div className="glass-card cs-sim-ended-card">
         <div className="cs-sim-ended-icon-box"><Activity size={40} color="#10b981" /></div>
         <h2 className="cs-sim-ended-title">Interview Completed</h2>
-        <button onClick={() => setActiveTab('jobboard')} className="btn-action-pro btn-primary cs-sim-btn-return">Return Home</button>
+        
+        {!feedbackSubmitted ? (
+          <div className="cs-sim-feedback-form">
+            <p className="cs-sim-feedback-subtitle">How was your experience with HireAI?</p>
+            
+            <div className="cs-sim-stars">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setRating(star)}
+                  className={`cs-sim-star-btn ${rating >= star ? 'active' : ''}`}
+                >
+                  <Sparkles size={24} />
+                </button>
+              ))}
+            </div>
+
+            <textarea
+              value={feedbackText}
+              onChange={(e) => setFeedbackText(e.target.value)}
+              placeholder="Share your thoughts on the AI's questions or technical depth..."
+              className="cs-sim-feedback-textarea"
+            />
+
+            <button 
+              onClick={submitFeedback}
+              disabled={isSubmittingFeedback || rating === 0}
+              className="btn-action-pro btn-primary cs-sim-btn-feedback"
+            >
+              {isSubmittingFeedback ? "Submitting..." : "Submit Feedback"}
+            </button>
+          </div>
+        ) : (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }} 
+            animate={{ opacity: 1, y: 0 }}
+            className="cs-sim-feedback-success"
+          >
+            <CheckCircle size={20} color="#10b981" />
+            <span>Thank you for your feedback!</span>
+          </motion.div>
+        )}
+
+        <button 
+          onClick={() => setActiveTab('jobboard')} 
+          className="btn-action-pro btn-ghost cs-sim-btn-return"
+          style={{ marginTop: '1.5rem' }}
+        >
+          Return Home
+        </button>
       </div>
     </div>
   );

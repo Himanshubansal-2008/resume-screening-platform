@@ -33,6 +33,12 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -144,25 +150,67 @@ Return ONLY valid JSON, no markdown:
 
     async generateInterviewChat(messages) {
         if (!this.groq) throw new Error("No Groq API key configured");
+        
+        // Hard grounding injection at the API level
+        const groundedMessages = messages.map(m => {
+            if (m.role === 'system') {
+                return {
+                    ...m,
+                    content: m.content + `
+
+CRITICAL RUNTIME RULES:
+- Your response must be MAX 2 sentences. Never write paragraphs.
+- NEVER teach, explain concepts, or lecture. You are an INTERVIEWER, not a teacher.
+- If candidate asks off-topic questions, chat, or "I don't know" → warn about mark deduction and ask next question.
+- NEVER use bullet points, numbered lists, or markdown formatting.
+- After acknowledging an answer, IMMEDIATELY ask the next question in the SAME response.`
+                };
+            }
+            return m;
+        });
+        
         try {
-            // Primary: Llama 3.3 70B
             const completion = await this.groq.chat.completions.create({
                 model: "llama-3.3-70b-versatile",
-                messages: messages,
-                temperature: 0.7,
-                max_tokens: 1000
+                messages: groundedMessages,
+                temperature: 0.3,
+                max_tokens: 100
             });
             return completion.choices[0]?.message?.content || '';
         } catch (e) {
-            console.warn('[AI] Groq Primary failed, trying Groq Instant fallback...', e.message.slice(0, 50));
-            // Secondary Fallback: Llama 3.1 8B (Faster, higher rate limits)
+            console.warn('[AI] Groq Primary failed, trying fallback...', e.message.slice(0, 50));
             const completion = await this.groq.chat.completions.create({
                 model: "llama-3.1-8b-instant",
-                messages: messages,
-                temperature: 0.7,
-                max_tokens: 1000
+                messages: groundedMessages,
+                temperature: 0.3,
+                max_tokens: 100
             });
             return completion.choices[0]?.message?.content || '';
+        }
+    }
+
+    async generateInterviewQuestions(job, resumeSummary, resumeSkills) {
+        if (!this.groq) throw new Error("No Groq API key configured");
+        const skillsList = Array.isArray(resumeSkills) ? resumeSkills.join(', ') : resumeSkills || '';
+        const prompt = `You are a senior technical hiring manager. Generate exactly 5 interview questions for the following candidate and job.
+JOB TITLE: ${job.title}
+CANDIDATE SKILLS: ${skillsList}
+Return ONLY valid JSON:
+{"questions":[{"id":1,"question":"string","topic":"string","difficulty":"medium"}]}`;
+
+        try {
+            const completion = await this.groq.chat.completions.create({
+                model: "llama-3.3-70b-versatile",
+                messages: [{ role: "user", content: prompt }],
+                temperature: 0.8,
+                max_tokens: 1000,
+                response_format: { type: "json_object" }
+            });
+            const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
+            return parsed.questions || [];
+        } catch (e) {
+            console.error('[AI] Question generation failed:', e.message);
+            throw e;
         }
     }
 }
@@ -360,7 +408,13 @@ const universalAI = {
         6. feedback (short summary)
         7. certificateMetadata (stylized title like "Neural Excellence Certified")
         
-        Transcript: ${JSON.stringify(transcript)}`;
+        Transcript: ${JSON.stringify(transcript)}
+        
+        PENALTY CRITERIA:
+        - If the candidate asked off-topic questions (e.g., "how are you", "what is your name", "what do you like").
+        - If the candidate tried to treat the interviewer as a chatbot or teacher.
+        - If the candidate was unprofessional or argumentative.
+        For each such infraction, deduct 10 points from the overallScore and list it in 'improvements'.`;
 
         try {
             // Try Groq as it's faster for structured output
@@ -383,8 +437,41 @@ const universalAI = {
                 _provider: "fallback"
             };
         }
+    },
+
+    async generateInterviewQuestions(job, resumeSummary, resumeSkills) {
+        console.log('[AI] Generating interview questions for job:', job.title);
+        try {
+            const questions = await groqProvider.generateInterviewQuestions(job, resumeSummary, resumeSkills);
+            console.log('[AI] ✓ Interview questions generated:', questions.length);
+            return questions;
+        } catch (e) {
+            console.error('[AI] Question generation failed:', e.message);
+            // Return generic fallback questions based on job title
+            return [
+                { id: 1, question: `Can you walk me through a challenging technical project you've worked on relevant to ${job.title}?`, topic: "Experience", difficulty: "medium" },
+                { id: 2, question: `What is your approach to debugging a production issue under time pressure?`, topic: "Problem Solving", difficulty: "medium" },
+                { id: 3, question: `How do you ensure code quality and maintainability in your projects?`, topic: "Engineering Practices", difficulty: "medium" },
+                { id: 4, question: `Describe a situation where you had to quickly learn a new technology. How did you approach it?`, topic: "Adaptability", difficulty: "easy" },
+                { id: 5, question: `What's the most complex system design decision you've made and what were the trade-offs?`, topic: "System Design", difficulty: "hard" }
+            ];
+        }
     }
 };
+
+// Helper: generate and save questions for an application (fire-and-forget safe)
+async function generateAndSaveQuestions(applicationId, job, resumeSummary, resumeSkills) {
+    try {
+        const questions = await universalAI.generateInterviewQuestions(job, resumeSummary, resumeSkills);
+        await prisma.application.update({
+            where: { id: applicationId },
+            data: { interviewQuestions: questions }
+        });
+        console.log(`[AI] ✓ Questions saved for application ${applicationId}`);
+    } catch (e) {
+        console.error(`[AI] Failed to save questions for application ${applicationId}:`, e.message);
+    }
+}
 
 // Health Check
 app.get('/', (req, res) => {
@@ -480,7 +567,49 @@ app.post('/api/applications', async (req, res) => {
                 resumeSkills: resumeSkills || []
             }
         });
+
+        const job = await prisma.job.findUnique({ where: { id: parseInt(jobId) } });
+
+        // Fire-and-forget: generate interview questions in the background
+        if (job) {
+            generateAndSaveQuestions(application.id, job, resumeSummary, resumeSkills).catch(() => {});
+        }
+
         res.json(application);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 2.6 Regenerate interview questions for an application
+app.post('/api/applications/:id/regenerate-questions', async (req, res) => {
+    try {
+        const appId = parseInt(req.params.id);
+        const application = await prisma.application.findUnique({
+            where: { id: appId },
+            include: { job: true }
+        });
+        if (!application) return res.status(404).json({ error: 'Application not found' });
+
+        res.json({ status: 'generating', message: 'Fresh questions are being generated in the background.' });
+
+        // Background generation
+        generateAndSaveQuestions(appId, application.job, application.resumeSummary, application.resumeSkills).catch(() => {});
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 2.7 Get interview questions for an application
+app.get('/api/applications/:id/questions', async (req, res) => {
+    try {
+        const appId = parseInt(req.params.id);
+        const application = await prisma.application.findUnique({
+            where: { id: appId },
+            select: { interviewQuestions: true }
+        });
+        if (!application) return res.status(404).json({ error: 'Application not found' });
+        res.json({ questions: application.interviewQuestions || [] });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -739,12 +868,28 @@ app.post('/api/interviews', async (req, res) => {
     }
 });
 
-if (process.env.NODE_ENV !== 'test') {
-    app.listen(PORT, '0.0.0.0', () => {
-        console.log(`Backend running with Neural Gemini Engine at http://0.0.0.0:${PORT}`);
-        console.log(`[Config] Groq Key: ${process.env.GROQ_API_KEY ? 'LOADED' : 'MISSING'}`);
-        console.log(`[Config] Gemini Keys: ${process.env.GEMINI_API_KEYS ? 'LOADED' : 'MISSING'}`);
-    });
-}
+app.patch('/api/interviews/:id/feedback', async (req, res) => {
+    try {
+        const { rating, comment } = req.body;
+        const interviewId = parseInt(req.params.id);
+        
+        const updated = await prisma.interview.update({
+            where: { id: interviewId },
+            data: {
+                candidateRating: parseInt(rating),
+                candidateComment: comment
+            }
+        });
+        
+        res.json(updated);
+    } catch (error) {
+        console.error("Feedback Save Error:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
 
-module.exports = app;
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Backend running with Neural Gemini Engine at http://0.0.0.0:${PORT}`);
+    console.log(`[Config] Groq Key: ${process.env.GROQ_API_KEY ? 'LOADED' : 'MISSING'}`);
+    console.log(`[Config] Gemini Keys: ${process.env.GEMINI_API_KEYS ? 'LOADED' : 'MISSING'}`);
+});
