@@ -87,9 +87,7 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
               >
                 <Bot size={18} /> <span>Ask HireAI Bot</span>
               </button>
-
               <div className="sidebar-separator"></div>
-
             </>
           ) : (
             <>
@@ -111,7 +109,7 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
               <button className={`nav-item-pro ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>
                 <User size={18} /> <span>My Profile</span>
               </button>
-
+              <div className="sidebar-separator"></div>
             </>
           )}
         </nav>
@@ -129,18 +127,9 @@ const DashboardShell = ({ role, activeTab, setActiveTab, user, onOpenChat, candi
               <p className="header-subtitle">{headerContent.subtitle}</p>
             </div>
             <div className="header-right">
-              {activeTab === 'dashboard' && (
-                <button
-                  onClick={onToggleTheme}
-                  className="theme-toggle-header"
-                  title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-                >
-                  <div className={`theme-toggle-track ${theme === 'dark' ? 'dark' : ''}`}>
-                    <div className="theme-toggle-thumb" />
-                  </div>
-                  {theme === 'dark' ? <Moon size={14} color="white" /> : <Sun size={14} color="var(--warning)" />}
-                </button>
-              )}
+              <button onClick={onToggleTheme} className="theme-header-toggle" title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}>
+                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
               <div className="status-item">
                  <ShieldCheck size={16} color="var(--primary)" /> SECURE SESSION
               </div>

@@ -30,7 +30,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import LiveKeywordStream from '../shared/LiveKeywordStream';
 import TalentProfileModal from '../shared/TalentProfileModal';
 import { API_BASE_URL } from '../../apiConfig';
-
 import JobProfileModal from '../shared/JobProfileModal';
 import './Admin.css';
 

@@ -859,6 +859,35 @@ h4,
   box-shadow: 0 20px 40px -10px var(--primary-glow) !important;
 }
 
+/* ── Theme Header Toggle ── */
+.theme-header-toggle {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    background: hsla(0, 0%, 100%, 0.03);
+    border: 1px solid var(--card-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-dim);
+    transition: all 0.3s var(--transition);
+    backdrop-filter: blur(10px);
+}
+
+.theme-header-toggle:hover {
+    background: hsla(217, 91%, 60%, 0.1);
+    border-color: hsla(217, 91%, 60%, 0.3);
+    color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px -5px rgba(0,0,0,0.2);
+}
+
+[data-theme="light"] .theme-header-toggle {
+    color: var(--warning);
+    background: hsla(0, 0%, 0%, 0.03);
+}
+
 /* ── Config Error UI ── */
 .config-error-container {
   height: 100vh;
