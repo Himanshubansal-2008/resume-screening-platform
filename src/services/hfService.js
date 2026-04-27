@@ -8,9 +8,11 @@ const API_URL = "https://api-inference.huggingface.co/v1/chat/completions";
 const MODEL_ID = "mistralai/Mistral-7B-Instruct-v0.2";
 
 
+import { API_BASE_URL } from '../apiConfig';
+
 export const queryAI = async (messages) => {
     try {
-        const response = await fetch("http://localhost:5001/api/interview/chat", {
+        const response = await fetch(`${API_BASE_URL}/api/interview/chat`, {
             headers: {
                 "Content-Type": "application/json",
             },

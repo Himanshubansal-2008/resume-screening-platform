@@ -218,6 +218,31 @@ const CandidateJobBoard = ({ user, allJobs, recommendations = [], myProfile, onR
                             "{job.reason}"
                           </div>
 
+                          {/* Neural Breakdown for Candidate View */}
+                          {job.matchBreakdown && (
+                            <div className="cjb-breakdown-section">
+                              <h4 className="cjb-breakdown-title"><TrendingUp size={16} /> NEURAL FIT BREAKDOWN</h4>
+                              <div className="cjb-breakdown-grid">
+                                {Object.entries(job.matchBreakdown).map(([key, data]) => (
+                                  <div key={key} className="cjb-breakdown-item">
+                                    <div className="cjb-breakdown-info">
+                                      <span className="cjb-breakdown-key">{key.toUpperCase()}</span>
+                                      <span className="cjb-breakdown-val">{data.score} / {data.max}</span>
+                                    </div>
+                                    <div className="cjb-breakdown-progress-bg">
+                                      <motion.div 
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${(data.score / (data.max || 1)) * 100}%` }}
+                                        transition={{ duration: 1.2, ease: "easeOut" }}
+                                        className="cjb-breakdown-progress-fill"
+                                      />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
                           {(job.responsibilities || job.requirements) && (
                             <div className="cjb-two-col">
                               {job.responsibilities && (

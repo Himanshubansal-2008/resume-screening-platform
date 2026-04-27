@@ -105,7 +105,7 @@ const AdminJobDescriptions = ({ jobs: initialJobs = [], onRefresh }) => {
     e.stopPropagation();
     if (!window.confirm("Are you sure you want to delete this job posting? This will also remove associated applications.")) return;
     try {
-        const res = await fetch(`http://localhost:5001/api/jobs/${id}`, { method: 'DELETE' });
+        const res = await fetch(`${API_BASE_URL}/api/jobs/${id}`, { method: 'DELETE' });
         if (res.ok) if (onRefresh) onRefresh();
     } catch (err) { alert(err.message); }
   };

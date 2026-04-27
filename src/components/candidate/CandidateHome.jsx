@@ -29,23 +29,59 @@ function generateTipsFallback(myProfile) {
   return tips.slice(0, 4);
 }
 
-function generateTips(myProfile) {
+function generateTips(myProfile, recommendations = []) {
+  const tips = [];
+  
+  // Find the highest recommended job or the one they applied to
+  const bestJob = recommendations.sort((a, b) => b.matchPercent - a.matchPercent)[0];
+  const breakdown = bestJob?.matchBreakdown;
+
+  if (breakdown) {
+    // 1. Skill Specific Tip
+    if (breakdown.skills.score < 20) {
+      tips.push({ 
+        type: 'critical', icon: Target, color: '#f59e0b', bg: 'hsla(45,100%,50%,0.06)', border: 'hsla(45,100%,50%,0.15)',
+        title: 'Technical Skill Gap', 
+        body: `Your skill match is low for ${bestJob.id}. The system detected only partial alignment with required stack. Highlight core technologies mentioned in the JD.` 
+      });
+    }
+
+    // 2. Experience Specific Tip
+    if (breakdown.experience.score < 15) {
+      tips.push({ 
+        type: 'warning', icon: TrendingUp, color: '#3b82f6', bg: 'hsla(217,91%,60%,0.06)', border: 'hsla(217,91%,60%,0.15)',
+        title: 'Seniority Alignment', 
+        body: 'The AI flagged a potential experience mismatch. Use specific metrics (e.g. "managed 5 people", "30% faster") to demonstrate your level of seniority.' 
+      });
+    }
+
+    // 3. Education Tip
+    if (breakdown.education.score < 5) {
+      tips.push({ 
+        type: 'warning', icon: Star, color: '#a78bfa', bg: 'hsla(255,90%,75%,0.06)', border: 'hsla(255,90%,75%,0.15)',
+        title: 'Degree Verification', 
+        body: 'Your education score is low. Ensure your graduation status and degree type are explicitly mentioned in your resume header.' 
+      });
+    }
+  }
+
+  // Fallback to general AI tips if we don't have enough specific ones
   let analysis = myProfile?.detailedAnalysis;
   if (typeof analysis === 'string') {
     try { analysis = JSON.parse(analysis); } catch (e) { }
   }
-  const aiTips = analysis?.tips;
-  if (aiTips && Array.isArray(aiTips) && aiTips.length > 0) {
-    return aiTips.map(t => {
-      let icon = Lightbulb;
-      let color = '#a78bfa'; let bg = 'hsla(255,90%,75%,0.06)'; let border = 'hsla(255,90%,75%,0.15)';
-      if (t.type === 'critical') { icon = AlertTriangle; color = '#f59e0b'; bg = 'hsla(45,100%,50%,0.06)'; border = 'hsla(45,100%,50%,0.15)'; }
-      else if (t.type === 'warning') { icon = Target; color = '#3b82f6'; bg = 'hsla(217,91%,60%,0.06)'; border = 'hsla(217,91%,60%,0.15)'; }
-      else if (t.type === 'success') { icon = Star; color = '#10b981'; bg = 'hsla(150,80%,45%,0.06)'; border = 'hsla(150,80%,45%,0.15)'; }
-      return { ...t, icon, color, bg, border };
-    }).slice(0, 4);
-  }
-  return generateTipsFallback(myProfile);
+  
+  const aiTips = (analysis?.tips || []).map(t => {
+    let icon = Lightbulb;
+    let color = '#a78bfa'; let bg = 'hsla(255,90%,75%,0.06)'; let border = 'hsla(255,90%,75%,0.15)';
+    if (t.type === 'critical') { icon = AlertTriangle; color = '#f59e0b'; bg = 'hsla(45,100%,50%,0.06)'; border = 'hsla(45,100%,50%,0.15)'; }
+    else if (t.type === 'warning') { icon = Target; color = '#3b82f6'; bg = 'hsla(217,91%,60%,0.06)'; border = 'hsla(217,91%,60%,0.15)'; }
+    else if (t.type === 'success') { icon = Star; color = '#10b981'; bg = 'hsla(150,80%,45%,0.06)'; border = 'hsla(150,80%,45%,0.15)'; }
+    return { ...t, icon, color, bg, border };
+  });
+
+  const combinedTips = [...tips, ...aiTips];
+  return combinedTips.length > 0 ? combinedTips.slice(0, 4) : generateTipsFallback(myProfile);
 }
 
 const CandidateHome = ({ user, myProfile, recommendations = [] }) => {
@@ -53,7 +89,7 @@ const CandidateHome = ({ user, myProfile, recommendations = [] }) => {
   const displayScore = myProfile?.match || 0;
   const aiSummary = myProfile?.summary || "Analyzing your experience...";
   const aiReview = myProfile?.feedback || "Your AI evaluation and feedback will appear here shortly.";
-  const tips = generateTips(myProfile);
+  const tips = generateTips(myProfile, recommendations);
 
   return (
     <div className="fadeIn ch-container">

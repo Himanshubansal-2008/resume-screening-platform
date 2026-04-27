@@ -85,7 +85,7 @@ const AdminResumeDatabase = ({ candidates, onOpenChat, onRefresh }) => {
     if (!window.confirm("Are you sure you want to permanently delete this candidate profile?")) return;
     
     try {
-        const res = await fetch(`http://localhost:5001/api/candidates/${id}`, { method: 'DELETE' });
+        const res = await fetch(`${API_BASE_URL}/api/candidates/${id}`, { method: 'DELETE' });
         if (res.ok) {
             if (onRefresh) onRefresh();
         }
