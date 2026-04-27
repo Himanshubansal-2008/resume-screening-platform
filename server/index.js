@@ -11,6 +11,13 @@ const fs = require('fs');
 const path = require('path');
 const upload = multer();
 
+const { index: pineconeIndex } = require('./lib/pinecone');
+const { getEmbeddings } = require('./lib/embeddings');
+const { chunkText } = require('./lib/chunker');
+
+const newsRouter = require('./routes/news');
+const { setupNewsCron } = require('./jobs/newsCron');
+
 const app = express();
 const PORT = process.env.PORT || 5001;
 
@@ -43,6 +50,10 @@ if (!fs.existsSync(uploadsDir)) {
 }
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/api/news', newsRouter);
+
+// Start News Cron Job
+setupNewsCron();
 
 // --- UTILITIES ---
 function cleanJsonResponse(text) {
@@ -217,11 +228,17 @@ MY CORE BEHAVIOR:
         }
     }
 
-    async generateInterviewQuestions(job, resumeSummary, resumeSkills) {
+    async generateInterviewQuestions(job, resumeSummary, resumeSkills, ragContext = "") {
         if (!this.groq) throw new Error("No Groq API key configured");
         const skillsList = Array.isArray(resumeSkills) ? resumeSkills.join(', ') : resumeSkills || '';
-        const prompt = `You are a senior technical hiring manager. Generate exactly 5 interview questions for the following candidate and job.
-JOB TITLE: ${job.title}
+        
+        // Task 2 — Smarter candidate-job matching: Replace JD with RAG context
+        const jdSection = ragContext 
+            ? `Relevant JD context (retrieved): ${ragContext}`
+            : `JOB TITLE: ${job.title}`;
+
+        const prompt = `You are a senior technical hiring manager. Generate exactly 5 interview questions for the following candidate based on the specific job requirements.
+${jdSection}
 CANDIDATE SKILLS: ${skillsList}
 Return ONLY valid JSON:
 {"questions":[{"id":1,"question":"string","topic":"string","difficulty":"medium"}]}`;
@@ -549,10 +566,10 @@ Return ONLY JSON: {"infractionCount": number, "infractionDetails": ["reason 1", 
         };
     },
 
-    async generateInterviewQuestions(job, resumeSummary, resumeSkills) {
+    async generateInterviewQuestions(job, resumeSummary, resumeSkills, ragContext = "") {
         console.log('[AI] Generating interview questions for job:', job.title);
         try {
-            const questions = await groqProvider.generateInterviewQuestions(job, resumeSummary, resumeSkills);
+            const questions = await groqProvider.generateInterviewQuestions(job, resumeSummary, resumeSkills, ragContext);
             console.log('[AI] ✓ Interview questions generated:', questions.length);
             return questions;
         } catch (e) {
@@ -572,7 +589,23 @@ Return ONLY JSON: {"infractionCount": number, "infractionDetails": ["reason 1", 
 // Helper: generate and save questions for an application (fire-and-forget safe)
 async function generateAndSaveQuestions(applicationId, job, resumeSummary, resumeSkills) {
     try {
-        const questions = await universalAI.generateInterviewQuestions(job, resumeSummary, resumeSkills);
+        // Task 2 — Smarter candidate-job matching
+        let ragContext = "";
+        try {
+            const queryVector = await getEmbeddings(resumeSummary || job.title);
+            const queryResponse = await pineconeIndex.namespace('jobs').query({
+                vector: queryVector,
+                topK: 3,
+                includeMetadata: true,
+                filter: { jobId: job.id }
+            });
+            ragContext = queryResponse.matches.map(m => m.metadata.text).join("\n---\n");
+            console.log(`[RAG] Found ${queryResponse.matches.length} relevant chunks for context`);
+        } catch (ragErr) {
+            console.error('[RAG] Matching failed:', ragErr.message);
+        }
+
+        const questions = await universalAI.generateInterviewQuestions(job, resumeSummary, resumeSkills, ragContext);
         await prisma.application.update({
             where: { id: applicationId },
             data: { interviewQuestions: questions }
@@ -643,24 +676,64 @@ app.patch('/api/candidates/:id', async (req, res) => {
 });
 
 // 2.1 Delete Candidate
+// 2.3 HR Semantic Search (RAG)
+app.get('/api/hr/search', async (req, res) => {
+    try {
+        const { q } = req.query;
+        if (!q) return res.status(400).json({ error: "Query string 'q' is required" });
+
+        const queryVector = await getEmbeddings(q);
+        const queryResponse = await pineconeIndex.namespace('resumes').query({
+            vector: queryVector,
+            topK: 5,
+            includeMetadata: true
+        });
+
+        const results = queryResponse.matches.map(m => ({
+            candidateId: m.metadata.candidateId,
+            email: m.metadata.email,
+            score: m.score,
+            matchedChunk: m.metadata.text
+        }));
+
+        res.json(results);
+    } catch (error) {
+        console.error('[HR Search Error]:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 2.4 Delete Candidate (with RAG cleanup)
 app.delete('/api/candidates/:id', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        // Delete related resumes first (if not handled by Cascade in DB)
-        await prisma.resume.deleteMany({ where: { candidateId: id } });
-        // Delete related applications
-        await prisma.application.deleteMany({ where: { candidateId: id } });
-        // Delete related interviews
-        await prisma.interview.deleteMany({ where: { candidateId: id } });
+        const candidate = await prisma.candidate.findUnique({ where: { id } });
 
+        // Delete related data
+        await prisma.resume.deleteMany({ where: { candidateId: id } });
+        await prisma.application.deleteMany({ where: { candidateId: id } });
+        await prisma.interview.deleteMany({ where: { candidateId: id } });
+        
         await prisma.candidate.delete({ where: { id } });
+
+        // Task 4 — Delete vectors on cascade delete (Candidate)
+        if (candidate) {
+            try {
+                await pineconeIndex.namespace('resumes').deleteMany({
+                    filter: { email: candidate.email }
+                });
+                console.log(`[RAG] Deleted vectors for candidate ${candidate.email}`);
+            } catch (ragErr) {
+                console.error('[RAG] Candidate vector deletion failed:', ragErr.message);
+            }
+        }
+
         res.json({ message: "Candidate purged from neural record" });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// 2.5 Applications
 app.post('/api/applications', async (req, res) => {
     try {
         const { candidateEmail, jobId, resumeName, resumeScore, resumeSummary, resumeSkills } = req.body;
@@ -795,6 +868,23 @@ app.post('/api/candidates', upload.single('resumePdf'), async (req, res) => {
                 file: fileUrl
             }
         });
+        
+        // Task 1 — Embed and upsert on upload (Candidate)
+        try {
+            const chunks = chunkText(extractedText);
+            const vectors = await Promise.all(chunks.map(async (chunk, i) => {
+                const embedding = await getEmbeddings(chunk);
+                return {
+                    id: `cand_${candidate.id}_${i}`,
+                    values: embedding,
+                    metadata: { candidateId: candidate.id, email: candidate.email, chunkIndex: i, text: chunk },
+                };
+            }));
+            await pineconeIndex.namespace('resumes').upsert(vectors);
+            console.log(`[RAG] Upserted ${vectors.length} vectors for candidate ${candidate.id}`);
+        } catch (ragErr) {
+            console.error('[RAG] Candidate vector sync failed:', ragErr.message);
+        }
 
         // Add Resume to DB
         const existingResumes = await prisma.resume.count({ where: { candidateId: candidate.id } });
@@ -899,6 +989,24 @@ app.post('/api/jobs', async (req, res) => {
                 applicants: 0
             }
         });
+
+        // Task 1 — Embed and upsert on upload (Job)
+        try {
+            const chunks = chunkText(description || title);
+            const vectors = await Promise.all(chunks.map(async (chunk, i) => {
+                const embedding = await getEmbeddings(chunk);
+                return {
+                    id: `job_${job.id}_${i}`,
+                    values: embedding,
+                    metadata: { jobId: job.id, chunkIndex: i, text: chunk },
+                };
+            }));
+            await pineconeIndex.namespace('jobs').upsert(vectors);
+            console.log(`[RAG] Upserted ${vectors.length} vectors for job ${job.id}`);
+        } catch (ragErr) {
+            console.error('[RAG] Job vector sync failed:', ragErr.message);
+        }
+
         res.json(job);
     } catch (error) {
         console.error('[Create Job Error]:', error.message);
@@ -909,7 +1017,19 @@ app.post('/api/jobs', async (req, res) => {
 // 4.2 Delete Job
 app.delete('/api/jobs/:id', async (req, res) => {
     try {
-        await prisma.job.delete({ where: { id: parseInt(req.params.id) } });
+        const id = parseInt(req.params.id);
+        await prisma.job.delete({ where: { id } });
+
+        // Task 4 — Delete vectors on cascade delete (Job)
+        try {
+            await pineconeIndex.namespace('jobs').deleteMany({
+                filter: { jobId: id }
+            });
+            console.log(`[RAG] Deleted vectors for job ${id}`);
+        } catch (ragErr) {
+            console.error('[RAG] Job vector deletion failed:', ragErr.message);
+        }
+
         res.json({ message: "Job deleted" });
     } catch (error) {
         res.status(500).json({ error: error.message });
