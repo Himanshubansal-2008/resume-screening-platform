@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { TrendingUp, Cpu, Sparkles, CheckCircle, Zap, Lightbulb, Target, ArrowUpRight, Star, AlertTriangle, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import JobNews from '../shared/JobNews';
 import './candidate.css';
 
 // Generate AI resume tips from real profile data
@@ -182,6 +183,14 @@ const CandidateHome = ({ user, myProfile, recommendations = [] }) => {
             </p>
           </div>
         </div>
+      </motion.div>
+
+      {/* Related Job News Section */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} style={{ marginTop: '1.5rem', height: '500px' }}>
+        <JobNews 
+          candidateId={myProfile?.id} 
+          title="Personalized Market Insights" 
+        />
       </motion.div>
     </div>
   );

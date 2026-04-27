@@ -205,7 +205,7 @@ const AIChatbotSidebar = ({ isOpen, onClose, candidates, activeCandidate }) => {
                       disabled={isLoading || !input.trim()} 
                       className="chat-send-btn"
                     >
-                        {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                        {isLoading ? <Loader2 size={18} className="spin" /> : <Send size={18} />}
                     </button>
                 </form>
             </div>

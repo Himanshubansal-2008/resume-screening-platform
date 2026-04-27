@@ -1,123 +1,172 @@
-# HireAI - AI-Powered Resume Screening & Interview Platform
+# 🚀 HireAI: Neural-Powered Recruitment Platform
 
-HireAI is a cutting-edge recruitment platform that leverages advanced AI to automate resume screening, job description analysis, and technical interview simulations. Built with a robust multi-model AI engine, it ensures high-accuracy candidate matching and evaluation.
+HireAI is a state-of-the-art recruitment infrastructure that leverages **RAG (Retrieval-Augmented Generation)** and multiple LLMs (Gemini & Llama 3) to automate resume screening, semantic talent discovery, and contextual interview preparation.
 
-![HireAI Banner](https://img.shields.io/badge/HireAI-Recruitment_Revolution-blueviolet?style=for-the-badge&logo=probot)
-![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
-![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)
-![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
-![Prisma](https://img.shields.io/badge/Prisma-3982CE?style=for-the-badge&logo=Prisma&logoColor=white)
+---
 
-## 🚀 Features
+## 🏛️ System Architecture
 
-### ✨ Visual Excellence
-- **Cyber Horizon Design System**: A bespoke HSL-based design system optimized for both performance and aesthetics.
-- **Cinematic Experience**: Immersive login and loading sequences with plasma backgrounds and neural scanning animations.
-- **Glassmorphism UI**: Premium frosted-glass cards and modals using advanced CSS backdrop filters.
-- **Adaptive Theming**: Seamless transition between "Cyber Dark" and "Horizon Light" modes.
+HireAI follows a decoupled architecture with a focus on high-speed neural processing and semantic data retrieval.
 
-### For Recruiters (Admin)
-- **AI Resume Database**: Intelligent search and filtering of candidates based on AI-calculated match scores.
-- **JD Analyzer**: Automatically extract structured data (skills, responsibilities, requirements) from raw job description text.
-- **Recruiter AI Assistant**: A dedicated chatbot to help analyze candidate trends and job market alignment.
-- **Candidate Management**: Track application statuses from "Top Pick" to "Hired".
+### 1. High-Level Block Diagram
+```mermaid
+graph TD
+    subgraph "Frontend (React + Vite)"
+        UI[Glassmorphism UI]
+        FM[Framer Motion Animations]
+    end
 
-### For Candidates
-- **Smart Job Board**: View job openings with real-time matching indicators based on your profile.
-- **AI Resume Analysis**: Instant feedback on resumes, including skill extraction, summary generation, and actionable improvement tips.
-- **Technical Interview Simulation**: Practice with "HireAI", a strict AI interviewer that conducts realistic technical evaluations and provides detailed performance grading.
-- **Interview Hub**: Dedicated space for interview preparation and historical performance tracking.
+    subgraph "Backend (Node.js + Express)"
+        API[REST Endpoints]
+        CH[chunker.js - Token Overlap]
+        EM[embeddings.js - Gemini 004]
+        NF[newsFetcher.js - Aggregator]
+    end
 
-## 🧠 Neural Engine (Multi-Model Architecture)
+    subgraph "Intelligence Layer"
+        G1[Gemini 1.5 Flash - Parsing]
+        G2[Gemini Embedding 004 - RAG]
+        L3[Groq Llama 3 - Reasoning]
+    end
 
-HireAI uses a sophisticated "Cascade" AI strategy to ensure 100% uptime and high-quality results:
-1.  **Gemini 1.5 Flash**: Primary engine for deep resume analysis and JD extraction.
-2.  **Groq (Llama 3.3-70B)**: High-speed engine for real-time interview simulations and grading.
-3.  **Regex Fallback**: Lightweight local processing to ensure basic functionality even during API outages.
+    subgraph "Storage Layer"
+        PG[(PostgreSQL + Prisma)]
+        PC[(Pinecone Vector DB)]
+        FS[Local Storage - PDF Uploads]
+    end
 
-## 🛠️ Tech Stack
+    UI <--> API
+    API <--> CH <--> EM
+    EM <--> G2
+    API <--> PG
+    API <--> PC
+    API <--> G1
+    API <--> L3
+```
 
-- **Frontend**: React 19, Vite, Framer Motion (Animations), Lucide React (Icons), Clerk (Authentication).
-- **Backend**: Node.js, Express, Multer (File Handling), PDF-Parse.
-- **Database**: Supabase (PostgreSQL) via Prisma ORM.
-- **AI Integration**: Google Generative AI SDK, Groq SDK.
+### 2. The RAG Pipeline (Semantic Memory)
+HireAI doesn't just store text; it understands it.
+1.  **Chunking**: Raw text is split into 500-token blocks with 100-token overlap to maintain semantic continuity.
+2.  **Embedding**: Gemini converts blocks into 768-dimensional vectors.
+3.  **Indexing**: Vectors are stored in Pinecone across two namespaces: `resumes` and `jobs`.
+4.  **Retrieval**: When searching or applying, the system performs a cosine similarity search to find the most relevant context.
 
-## 📋 Prerequisites
+---
 
-- Node.js (v18 or higher)
-- Supabase Account (PostgreSQL)
-- Clerk Account (Authentication)
-- API Keys for Google Gemini and Groq
+## ✨ Core Functionalities
 
-## ⚙️ Setup & Installation
+### 🛡️ For HR & Recruiters
+*   **Neural Resume Analysis**: Instant extraction of skills, match scores, and AI-driven feedback using Gemini 1.5 Flash.
+*   **Semantic Talent Search**: A RAG-powered search bar that understands natural language queries (e.g., "Find developers who worked on high-load distributed systems").
+*   **Global Market Pulse**: A real-time news aggregator that tracks hiring trends, layoffs, and tech news across the web.
+*   **Engine Diagnostics**: Live monitoring of pool match rates and model confidence levels.
 
-1.  **Clone the Repository**
-    ```bash
-    git clone https://github.com/Himanshubansal-2008/resume-screening-platform.git
-    cd resume-screening-platform
-    ```
+### 🎓 For Candidates
+*   **Automated Matching**: High-precision compatibility scoring against live job descriptions.
+*   **Related Market News**: Personalized news feed based on the candidate's specific skill set found in their resume.
+*   **Smart Application**: Upon applying, the system generates 5 personalized interview questions grounded in the specific requirements of the JD.
 
-2.  **Install Dependencies**
-    ```bash
-    # Install frontend dependencies
-    npm install
+---
 
-    # Install server dependencies
-    cd server
-    npm install
-    cd ..
-    ```
+## 🛠️ Technology Stack
 
-3.  **Environment Variables**
-    Create a `.env` file in the root directory (and `server/` directory if needed) with the following:
-    ```env
-    # Auth
-    VITE_CLERK_PUBLISHABLE_KEY=your_clerk_key
-    
-    # AI Keys
-    GEMINI_API_KEYS=key1,key2
-    GROQ_API_KEY=your_groq_key
-    
-    # Database
-    DATABASE_URL=your_postgresql_url
-    
-    # Supabase
-    VITE_SUPABASE_URL=your_supabase_url
-    VITE_SUPABASE_ANON_KEY=your_supabase_key
-    
-    # API
-    VITE_API_URL=http://localhost:5001
-    ```
+| Layer | Technology |
+| :--- | :--- |
+| **Frontend** | React, Vite, Tailwind CSS (Vanilla CSS Extensions), Framer Motion |
+| **Backend** | Node.js, Express, Multer, PDF-parse |
+| **Database** | PostgreSQL (Supabase), Prisma ORM |
+| **Vector DB** | Pinecone |
+| **AI Models** | Google Gemini (Analysis/Embeddings), Groq/Llama 3 (Generation) |
+| **Jobs** | Node-cron (News Aggregation) |
 
-4.  **Database Migration**
-    ```bash
-    cd server
-    npx prisma generate
-    npx prisma db push
-    cd ..
-    ```
+---
 
-5.  **Run the Application**
-    ```bash
-    # Run both frontend and backend concurrently
-    npm run dev
-    ```
+## 🚀 Installation & Setup
+
+### Prerequisites
+*   Node.js v18+
+*   PostgreSQL Database
+*   API Keys: Gemini, Groq, Pinecone, NewsAPI
+
+### 1. Clone & Install
+```bash
+git clone <repo-url>
+cd resume-screening-platform
+
+# Install Frontend
+npm install
+
+# Install Backend
+cd server
+npm install
+```
+
+### 2. Environment Variables
+Create a `server/.env` file:
+```env
+# Database
+DATABASE_URL=postgresql://...
+
+# AI Keys
+GEMINI_API_KEYS=key1,key2...
+GROQ_API_KEY=gsk_...
+
+# Vector DB
+PINECONE_API_KEY=...
+PINECONE_INDEX_NAME=hireai-index
+
+# Market News
+NEWS_API_KEY=...
+```
+
+### 3. Database Initialization
+```bash
+cd server
+npx prisma db push
+```
+
+### 4. Run Development
+```bash
+# From root
+npm run dev
+```
+
+---
 
 ## 📂 Project Structure
 
 ```text
-├── server/               # Express backend
-│   ├── index.js          # Main API entry & AI Engine
-│   ├── prisma/           # Database schema
-│   ├── uploads/          # Temporary resume storage
-│   └── lib/              # Shared utilities
-├── src/                  # React frontend
-│   ├── components/       # UI Components (Admin/Candidate)
-│   ├── services/         # API & Auth services
-│   ├── App.jsx           # Routing & Layout
-│   └── index.css         # Global styles & Design system
-└── public/               # Static assets
+├── server/
+│   ├── lib/
+│   │   ├── pinecone.js    # Singleton Vector Client
+│   │   ├── embeddings.js  # Gemini Embedding Helper
+│   │   ├── chunker.js     # Semantic Text Splitter
+│   │   └── prisma.js      # DB Client
+│   ├── services/
+│   │   └── newsFetcher.js # Multi-source News Scraper
+│   ├── jobs/
+│   │   └── newsCron.js    # 6-hour refresh schedule
+│   └── index.js           # Core Express Neural Engine
+├── src/
+│   ├── components/
+│   │   ├── admin/         # HR Dashboard Modules
+│   │   ├── candidate/     # Candidate Portal Modules
+│   │   └── shared/        # Universal Components (JobNews, Modals)
+│   └── apiConfig.js       # Frontend API Routing
+└── prisma/
+    └── schema.prisma      # Unified Data Model
 ```
 
 ---
-Built with ❤️ by Zenith
+
+## 📡 API Reference (Summary)
+
+*   `POST /api/candidates`: Upload and vectorize resume.
+*   `GET /api/hr/search?q=...`: Perform semantic search over resume pool.
+*   `POST /api/jobs`: Create JD and vectorize into job index.
+*   `POST /api/applications`: Link candidate and trigger RAG-grounded question generation.
+*   `GET /api/news`: Fetch personalized or global job market news.
+
+---
+
+> **Note**: This platform is designed for high-performance recruitment environments. Latency for neural extraction is typically < 2s for complex PDF parsing.

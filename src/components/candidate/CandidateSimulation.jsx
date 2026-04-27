@@ -293,7 +293,7 @@ const endCall = async () => {
 
   // Save session to history
   try {
-    await fetch(`${API_BASE_URL}/api/interviews`, {
+    const res = await fetch(`${API_BASE_URL}/api/interviews`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -314,7 +314,7 @@ const submitFeedback = async () => {
   if (!lastInterviewId) return;
   setIsSubmittingFeedback(true);
   try {
-    const res = await fetch(`http://localhost:5001/api/interviews/${lastInterviewId}/feedback`, {
+    const res = await fetch(`${API_BASE_URL}/api/interviews/${lastInterviewId}/feedback`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ rating, comment: feedbackText })
@@ -350,7 +350,7 @@ if (callState === 'lobby') {
         
         {questionsLoading ? (
           <div className="flex items-center gap-3 text-primary font-bold animate-pulse">
-            <Loader2 className="animate-spin" size={20} />
+            <Loader2 className="spin" size={20} />
             <span>Preparing Interview Questions...</span>
           </div>
         ) : (

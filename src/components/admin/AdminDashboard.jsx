@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import TalentProfileModal from '../shared/TalentProfileModal';
+import JobNews from '../shared/JobNews';
 import './Admin.css';
 
 const AdminDashboard = ({ candidates = [] }) => {
@@ -67,6 +68,10 @@ const AdminDashboard = ({ candidates = [] }) => {
                         </div>
                     </motion.div>
                 ))}
+            </div>
+
+            <div className="news-banner-section fadeIn" style={{ marginBottom: '1.5rem', height: '280px' }}>
+                <JobNews title="Global Market Pulse" />
             </div>
 
             <div className="dashboard-main-layout">
