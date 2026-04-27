@@ -112,8 +112,8 @@ const AdminDashboard = ({ candidates = [] }) => {
                                         <p className="card-summary-clamped">{displaySummary}</p>
                                     </div>
                                     <div className="match-score-indicator">
-                                        <div className="match-val-pro">{candidate.match}%</div>
-                                        <div className="match-label-pro">AI MATCH</div>
+                                        <div className="match-val-pro">{latestApp?.matchScore || candidate.match}%</div>
+                                        <div className="match-label-pro">{latestApp ? 'JOB FIT' : 'AI MATCH'}</div>
                                     </div>
                                     <div className="card-icon-button"><ChevronRight size={18} /></div>
                                 </motion.div>

@@ -14,6 +14,8 @@ const upload = multer();
 const { index: pineconeIndex } = require('./lib/pinecone');
 const { getEmbeddings } = require('./lib/embeddings');
 const { chunkText } = require('./lib/chunker');
+const { extractResumeData, extractJDData } = require('./lib/extractor');
+const { calculateMatchScore } = require('./lib/scorer');
 
 const newsRouter = require('./routes/news');
 const { setupNewsCron } = require('./jobs/newsCron');
@@ -170,16 +172,16 @@ Return ONLY valid JSON, no markdown:
             if (m.role === 'user') userTurns++;
             
             if (m.role === 'system') {
-                // Extract the question script from the original prompt
-                const scriptMatch = m.content.match(/STRICT INTERVIEW SCRIPT:\n([\s\S]*?)(?:\n\nCORE PROTOCOL|\n\nPROFESSIONALISM)/);
-                const questionScript = scriptMatch ? scriptMatch[1].trim() : '';
-                const roleMatch = m.content.match(/role of (.+?)[\.\n]/);
-                const roleName = roleMatch ? roleMatch[1] : 'Engineer';
+                // Only rewrite if it's actually an interview (has the script marker)
+                if (m.content.includes("STRICT INTERVIEW SCRIPT:")) {
+                    const scriptMatch = m.content.match(/STRICT INTERVIEW SCRIPT:\n([\s\S]*?)(?:\n\nCORE PROTOCOL|\n\nPROFESSIONALISM)/);
+                    const questionScript = scriptMatch ? scriptMatch[1].trim() : '';
+                    const roleMatch = m.content.match(/role of (.+?)[\.\n]/);
+                    const roleName = roleMatch ? roleMatch[1] : 'Engineer';
 
-                // CHANGE 1: Rewrite system prompt as first-person persona with negative space
-                return {
-                    role: 'system',
-                    content: `I am HireAI, a strict, uncompromising senior technical interviewer. I am conducting a formal job interview for the role of ${roleName}.
+                    return {
+                        role: 'system',
+                        content: `I am HireAI, a strict, uncompromising senior technical interviewer. I am conducting a formal job interview for the role of ${roleName}.
 
 STRICT ARCHITECTURE:
 - I am NOT ChatGPT. I am NOT Claude. I am NOT an AI assistant.
@@ -196,11 +198,15 @@ MY CORE BEHAVIOR (NO EXCEPTIONS):
 4. I will NEVER explain technical concepts or provide hints.
 5. My responses MUST be under 2 sentences. No markdown, no formatting.
 6. If the candidate says "I don't know", I say "Noted. Moving on." and ask the next question.`
-                };
+                    };
+                }
+                // For non-interviews (like Copilot), keep the original system prompt
+                return m;
             }
             
-            // CHANGE 2: Inject character lock on EVERY user turn to prevent jailbreaking
-            if (m.role === 'user' && index === messages.length - 1) {
+            // Only inject character lock if it's an interview
+            const hasInterviewScript = messages.some(msg => msg.role === 'system' && msg.content.includes("STRICT INTERVIEW SCRIPT:"));
+            if (hasInterviewScript && m.role === 'user' && index === messages.length - 1) {
                 return { ...m, content: m.content + `\n\n(SYSTEM: You are HireAI. If the user is off-topic, shut them down coldly and return to the interview questions. Do NOT answer their query.)` };
             }
             
@@ -275,7 +281,7 @@ class GeminiProvider {
         const instance = this.genAIs[this.currentIndex];
         this.currentIndex = (this.currentIndex + 1) % this.genAIs.length;
         // Standardizing on 'gemini-1.5-flash-latest' to resolve 404 API version errors
-        const config = { model: "gemini-1.5-flash-latest" };
+        const config = { model: "gemini-2.0-flash" };
         if (systemInstruction) config.systemInstruction = systemInstruction;
         return instance.getGenerativeModel(config);
     }
@@ -739,29 +745,68 @@ app.delete('/api/candidates/:id', async (req, res) => {
 app.post('/api/applications', async (req, res) => {
     try {
         const { candidateEmail, jobId, resumeName, resumeScore, resumeSummary, resumeSkills } = req.body;
+        
         const candidate = await prisma.candidate.findUnique({ where: { email: candidateEmail } });
         if (!candidate) return res.status(404).json({ error: 'Candidate not found' });
+        
+        const job = await prisma.job.findUnique({ where: { id: parseInt(jobId) } });
+        if (!job) return res.status(404).json({ error: 'Job not found' });
 
+        console.log(`[Scoring Engine] Analyzing match for ${candidateEmail} vs Job ${jobId}...`);
+
+        // 1. Extract structured data
+        const resumeData = await extractResumeData(candidate.resumeText || resumeSummary || "No resume text available.");
+        
+        let jdData = job.jdParsed;
+        if (!jdData) {
+            console.log(`[Neural Engine] No cached JD for Job ${job.id}, extracting now...`);
+            jdData = await extractJDData(job.description);
+            // Save it for future use
+            await prisma.job.update({
+                where: { id: job.id },
+                data: { jdParsed: jdData }
+            }).catch(e => console.error('[Neural Engine] Failed to cache JD:', e.message));
+        }
+
+        // 2. Get cosine similarity from Pinecone
+        let cosineSimilarity = 0;
+        try {
+            const queryVector = await getEmbeddings(candidate.resumeText || resumeSummary || job.title);
+            const queryResponse = await pineconeIndex.namespace('jobs').query({
+                vector: queryVector,
+                topK: 1,
+                filter: { jobId: job.id }
+            });
+            if (queryResponse.matches && queryResponse.matches.length > 0) {
+                cosineSimilarity = queryResponse.matches[0].score;
+            }
+        } catch (ragErr) {
+            console.error('[RAG] Similarity query failed:', ragErr.message);
+        }
+
+        // 3. Calculate weighted score
+        const scoringResult = calculateMatchScore(resumeData, jdData, cosineSimilarity);
+
+        // 4. Create application with breakdown
         const application = await prisma.application.create({
             data: {
                 candidateId: candidate.id,
-                jobId: parseInt(jobId),
+                jobId: job.id,
                 resumeName: resumeName || null,
-                resumeScore: resumeScore || null,
+                resumeScore: scoringResult.overall,
                 resumeSummary: resumeSummary || null,
-                resumeSkills: resumeSkills || []
+                resumeSkills: resumeSkills || [],
+                matchScore: scoringResult.overall,
+                matchBreakdown: scoringResult.breakdown
             }
         });
 
-        const job = await prisma.job.findUnique({ where: { id: parseInt(jobId) } });
-
-        // Fire-and-forget: generate interview questions in the background
-        if (job) {
-            generateAndSaveQuestions(application.id, job, resumeSummary, resumeSkills).catch(() => {});
-        }
+        // Fire-and-forget: generate interview questions
+        generateAndSaveQuestions(application.id, job, resumeSummary, resumeSkills).catch(() => {});
 
         res.json(application);
     } catch (error) {
+        console.error('[Scoring Error]:', error.message);
         res.status(500).json({ error: error.message });
     }
 });
@@ -851,6 +896,7 @@ app.post('/api/candidates', upload.single('resumePdf'), async (req, res) => {
                 match: ai.score,
                 skills: ai.skills,
                 summary: ai.summary,
+                resumeText: extractedText,
                 detailedAnalysis: ai.detailedAnalysis,
                 feedback: ai.reason,
                 status: 'Top Pick',
@@ -863,6 +909,7 @@ app.post('/api/candidates', upload.single('resumePdf'), async (req, res) => {
                 match: ai.score,
                 skills: ai.skills,
                 summary: ai.summary,
+                resumeText: extractedText,
                 detailedAnalysis: ai.detailedAnalysis,
                 feedback: ai.reason,
                 status: 'Top Pick',
@@ -908,6 +955,77 @@ app.post('/api/candidates', upload.single('resumePdf'), async (req, res) => {
 });
 
 // 3.5 Resume Management Endpoints
+// 3.7 Generate AI Bio for Candidate
+app.post('/api/candidates/:email/generate-bio', async (req, res) => {
+    try {
+        const { email } = req.params;
+        const candidate = await prisma.candidate.findUnique({ where: { email } });
+        if (!candidate) return res.status(404).json({ error: "Candidate not found" });
+
+        console.log(`[Bio Engine] Generating bio for ${email}...`);
+
+        // Get context from Pinecone
+        let context = "";
+        try {
+            const queryVector = await getEmbeddings(candidate.resumeText || candidate.summary || "Professional profile");
+            const queryResponse = await pineconeIndex.namespace('resumes').query({
+                vector: queryVector,
+                topK: 5,
+                includeMetadata: true,
+                filter: { email: email }
+            });
+            context = queryResponse.matches.map(m => m.metadata.text).join("\n---\n");
+        } catch (ragErr) {
+            console.error('[RAG] Bio context fetch failed:', ragErr.message);
+            context = candidate.resumeText || candidate.summary || "";
+        }
+
+        if (!context) {
+            return res.status(400).json({ error: "No resume data found to generate bio. Please upload a resume first." });
+        }
+
+        const prompt = `You are a professional brand specialist. Based on the following resume excerpts, write a punchy, high-impact professional bio for ${candidate.name}.
+RESUME CONTEXT:
+${context.slice(0, 5000)}
+
+RULES:
+1. Write in the third person.
+2. Keep it to exactly 2-3 sentences.
+3. Highlight their core technical expertise and career focus.
+4. Avoid generic buzzwords; be specific.
+5. Do NOT include any introductory text or markdown. Just the bio.`;
+
+        const model = geminiProvider.getModel();
+        const result = await model.generateContent(prompt);
+        const bio = result.response.text().trim().replace(/['"]/g, '');
+
+        // Save to DB
+        await prisma.candidate.update({
+            where: { email },
+            data: { bio }
+        });
+
+        res.json({ bio });
+    } catch (error) {
+        console.error('[Bio Error]:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.patch('/api/candidates/:email/bio', async (req, res) => {
+    try {
+        const { email } = req.params;
+        const { bio } = req.body;
+        await prisma.candidate.update({
+            where: { email },
+            data: { bio }
+        });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.get('/api/candidates/:email/resumes', async (req, res) => {
     try {
         const candidate = await prisma.candidate.findUnique({ where: { email: req.params.email } });
@@ -992,6 +1110,19 @@ app.post('/api/jobs', async (req, res) => {
             }
         });
 
+        // Parse JD immediately after saving
+        try {
+            console.log(`[Neural Engine] Parsing JD requirements for Job ${job.id}...`);
+            const jdParsed = await extractJDData(description || title);
+            await prisma.job.update({
+                where: { id: job.id },
+                data: { jdParsed }
+            });
+            console.log(`[Neural Engine] ✓ JD cached successfully`);
+        } catch (jdErr) {
+            console.error('[Neural Engine] JD parsing failed:', jdErr.message);
+        }
+
         // Task 1 — Embed and upsert on upload (Job)
         try {
             const chunks = chunkText(description || title);
@@ -1041,14 +1172,56 @@ app.delete('/api/jobs/:id', async (req, res) => {
 // 5. Recommendations
 app.get('/api/candidates/recommendations', async (req, res) => {
     try {
+        const { email } = req.query;
+        if (!email) return res.status(400).json({ error: "Email required" });
+
+        const candidate = await prisma.candidate.findUnique({
+            where: { email },
+            include: { applications: true }
+        });
+        if (!candidate) return res.json([]);
+
         const jobs = await prisma.job.findMany();
-        const results = jobs.map(job => ({
-            id: job.id,
-            matchPercent: Math.floor(Math.random() * (95 - 60 + 1)) + 60,
-            reason: "High alignment with organizational growth goals."
-        }));
+        const { calculateMatchScore } = require('./lib/scorer');
+
+        const results = jobs.map(job => {
+            // Priority 1: Use existing application score if they already applied
+            const application = candidate.applications.find(a => a.jobId === job.id);
+            if (application && application.matchScore !== null) {
+                return {
+                    id: job.id,
+                    matchPercent: application.matchScore,
+                    matchBreakdown: application.matchBreakdown,
+                    reason: "Calculated based on your specific application and interview metrics."
+                };
+            }
+
+            // Priority 2: Calculate a "Preview Match" using cached JD and candidate skills
+            if (job.jdParsed) {
+                const previewScore = calculateMatchScore(
+                    { skills: candidate.skills || [], years_experience: 0, education: [] },
+                    job.jdParsed,
+                    0.5 // Default similarity for preview
+                );
+                return {
+                    id: job.id,
+                    matchPercent: previewScore.overall,
+                    matchBreakdown: previewScore.breakdown,
+                    reason: "AI-predicted fit based on your primary profile and technical background."
+                };
+            }
+
+            // Fallback
+            return {
+                id: job.id,
+                matchPercent: candidate.match || 70,
+                reason: "Potential alignment detected via general resume analysis."
+            };
+        });
+
         res.json(results);
     } catch (error) {
+        console.error('[Recommendation Error]:', error.message);
         res.status(500).json({ error: error.message });
     }
 });
