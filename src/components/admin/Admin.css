@@ -1927,3 +1927,55 @@
     margin-bottom: 2rem;
 }
 
+/* ── MATCH BREAKDOWN UI ── */
+.match-breakdown-card {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    background: hsla(0, 0%, 100%, 0.02);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    margin-top: 1rem;
+}
+
+.breakdown-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.breakdown-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.breakdown-key {
+    font-size: 0.7rem;
+    font-weight: 900;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+}
+
+.breakdown-val {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: var(--primary);
+    font-family: 'Outfit', sans-serif;
+}
+
+.breakdown-progress-bg {
+    width: 100%;
+    height: 6px;
+    background: hsla(0, 0%, 100%, 0.05);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.breakdown-progress-fill {
+    height: 100%;
+    border-radius: 10px;
+    box-shadow: 0 0 15px var(--primary-glow);
+}
+

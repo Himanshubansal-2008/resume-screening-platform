@@ -123,29 +123,57 @@ const CandidateProfile = ({ user, myProfile, onRefresh, setActiveTab }) => {
   };
 
   // Bio Generator
-  const [bio, setBio] = useState(() => localStorage.getItem('cp_bio') || '');
-  useEffect(() => {
-    localStorage.setItem('cp_bio', bio);
-  }, [bio]);
+  const [bio, setBio] = useState('');
   const [isGeneratingBio, setIsGeneratingBio] = useState(false);
   const [isEditingBio, setIsEditingBio] = useState(false);
 
-  const generateBio = () => {
+  useEffect(() => {
+    if (myProfile?.bio) setBio(myProfile.bio);
+  }, [myProfile]);
+
+  const generateBio = async () => {
+    if (!email || email === '—') return;
     setIsEditingBio(false);
     setIsGeneratingBio(true);
-    setBio('');
-    const topSkills = allSkills.length > 0 ? allSkills.slice(0, 3).join(', ') : 'modern technologies';
-    const bioTemplate = `Forward-thinking professional with a focus on ${topSkills}. Passionate about building scalable solutions, solving complex problems, and driving organizational growth in high-velocity environments.`;
     
-    let i = 0;
-    const interval = setInterval(() => {
-      setBio(bioTemplate.slice(0, i));
-      i++;
-      if (i > bioTemplate.length) {
-        clearInterval(interval);
-        setIsGeneratingBio(false);
-      }
-    }, 25);
+    try {
+      const res = await fetch(`${API_BASE}/candidates/${email}/generate-bio`, {
+        method: 'POST'
+      });
+      if (!res.ok) throw new Error('Generation failed');
+      const data = await res.json();
+      
+      // Typing effect for the new bio
+      setBio('');
+      let i = 0;
+      const interval = setInterval(() => {
+        setBio(data.bio.slice(0, i));
+        i++;
+        if (i > data.bio.length) {
+          clearInterval(interval);
+          setIsGeneratingBio(false);
+          if (onRefresh) onRefresh();
+        }
+      }, 20);
+    } catch (err) {
+      console.error(err);
+      setIsGeneratingBio(false);
+      // Fallback to local template if API fails
+      const topSkills = allSkills.length > 0 ? allSkills.slice(0, 3).join(', ') : 'modern technologies';
+      setBio(`High-impact professional specializing in ${topSkills}. Committed to solving complex technical challenges and delivering scalable enterprise solutions.`);
+    }
+  };
+
+  const saveBio = async () => {
+    setIsEditingBio(false);
+    try {
+      await fetch(`${API_BASE}/candidates/${email}/bio`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bio })
+      });
+      if (onRefresh) onRefresh();
+    } catch (err) { console.error("Failed to save bio:", err); }
   };
 
   // Interactive Career Preferences
@@ -321,7 +349,7 @@ const CandidateProfile = ({ user, myProfile, onRefresh, setActiveTab }) => {
                   style={{ width: '100%', minHeight: '80px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--primary)', color: 'white', padding: '10px', borderRadius: '10px', fontSize: '0.9rem', resize: 'vertical' }}
                 />
                 <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                  <button onClick={() => setIsEditingBio(false)} className="btn-action-pro btn-primary" style={{ padding: '6px 12px', fontSize: '0.75rem' }}><Check size={12} /> Save Bio</button>
+                  <button onClick={saveBio} className="btn-action-pro btn-primary" style={{ padding: '6px 12px', fontSize: '0.75rem' }}><Check size={12} /> Save Bio</button>
                   <button onClick={generateBio} className="btn-action-pro btn-ghost" style={{ padding: '6px 12px', fontSize: '0.75rem' }}><Zap size={12} color="var(--warning)" /> Regenerate with AI</button>
                 </div>
               </motion.div>
