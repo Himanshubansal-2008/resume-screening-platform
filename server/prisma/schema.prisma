@@ -20,9 +20,11 @@ model Candidate {
   applied      String
   skills       String[]
   summary      String?
+  resumeText   String?
   feedback     String?
   file         String?
   detailedAnalysis Json?
+  bio          String?
   notes        String?       @default("")
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -62,8 +64,9 @@ model Job {
   requirements     String?  // Qualifications
   bonusPoints      String?  // Bonus / nice-to-have
   notes            String?  @default("")
+  jdParsed         Json?
   createdAt        DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  updatedAt        DateTime @updatedAt
   applications     Application[]
   interviews       Interview[]
 }
@@ -83,6 +86,7 @@ model Application {
   resumeScore       Int?
   resumeSummary     String?
   resumeSkills      String[]
+  matchBreakdown    Json?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 }

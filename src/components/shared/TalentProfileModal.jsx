@@ -69,7 +69,7 @@ const TalentProfileModal = ({ isOpen, onClose, candidate }) => {
                     <div className="modal-name-row">
                         <h2 className="modal-name">{candidate.name}</h2>
                         <span className="talent-score-badge">
-                            {candidate.match}% AI MATCH
+                            {candidate.applications?.[0]?.matchScore || candidate.match}% {candidate.applications?.[0] ? 'JOB FIT' : 'AI MATCH'}
                         </span>
                         {candidate.appliedResumeTitle && (
                             <span className="pill-badge-primary">
@@ -137,6 +137,35 @@ const TalentProfileModal = ({ isOpen, onClose, candidate }) => {
 
                 {/* Right Column */}
                 <div className="modal-column">
+                  {/* New Match Breakdown Section */}
+                  {candidate.applications?.[0]?.matchBreakdown && (
+                    <section style={{ marginBottom: '2rem' }}>
+                      <div className="modal-section-label label-primary">
+                        <TrendingUp size={20} />
+                        <span className="label-text">NEURAL MATCH ARCHITECTURE</span>
+                      </div>
+                      <div className="glass-card match-breakdown-card">
+                        {Object.entries(candidate.applications[0].matchBreakdown).map(([key, data]) => (
+                          <div key={key} className="breakdown-item">
+                            <div className="breakdown-info">
+                              <span className="breakdown-key">{key.toUpperCase()}</span>
+                              <span className="breakdown-val">{data.score} / {data.max}</span>
+                            </div>
+                            <div className="breakdown-progress-bg">
+                              <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${(data.score / (data.max || 1)) * 100}%` }}
+                                transition={{ duration: 1.5, ease: "easeOut" }}
+                                className="breakdown-progress-fill"
+                                style={{ background: `linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%)` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
                   <section>
                     <div className="modal-section-label label-warning">
                       <TrendingUp size={20} />
